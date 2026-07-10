@@ -1,0 +1,54 @@
+# Operations guide
+
+## Recurring newest-post monitoring
+
+1. Start every scheduled run from the profile URL without `startCursor`.
+2. Pass a small set of newest stored `source_post_id` values as `knownPostIds`.
+3. Import rows with a unique key on `(source_profile_id, source_post_id)`.
+4. Advance your application watermark only when that profile reports a complete coverage status.
+5. Retry failed profiles independently. Do not discard successful rows from other profiles.
+
+The Actor processes profiles independently and writes successful rows immediately after each profile completes.
+
+## Historical backfill
+
+`SUMMARY.profiles[].pointer.nextCursor` moves from newer posts to older posts. Use it only to continue a historical backfill for the same profile.
+
+A Facebook cursor is opaque and can expire. If an older-history cursor stops working, restart from the profile head with a larger bounded limit and deduplicate by post ID.
+
+## Failure codes
+
+| Code | Meaning | Recommended action |
+| --- | --- | --- |
+| `rate_limited` | Facebook returned error `1675004` or HTTP 429 | Retry the failed profile later; the Actor already rotates several sessions in-run |
+| `login_wall` | Logged-out public content was not exposed | Confirm the profile is public; do not provide or bypass credentials |
+| `profile_not_found` | Route returned 404 | Verify the URL or numeric profile ID |
+| `profile_unavailable` | Facebook marked content unavailable | Treat as inaccessible or removed |
+| `profile_id_missing` | Public route could not be resolved | Capture debug diagnostics and report an issue |
+| `graphql_query_failed` | Current query documents produced no usable feed | Rebuild with refreshed document IDs or use dynamic bundle discovery diagnostics |
+| `page_failed` | Timeline page exhausted its bounded retries | Retry only that profile from the profile head or saved backfill cursor |
+
+## Debugging
+
+Set `debug: true` for a bounded test. `SUMMARY.profiles[].diagnostics` then includes:
+
+- bootstrap HTTP status, final URL, resolved profile ID, and session identifier;
+- HTML prefetch extraction counts;
+- GraphQL query name, document ID source, response size, post count, cursor state, and Facebook errors;
+- a short response preview for failed or unusual query shapes;
+- dynamically discovered document IDs.
+
+Do not leave `includeRawPayload` or `debug` enabled for large routine runs unless you need them. They increase storage and make summaries much larger.
+
+## Media handling
+
+Photo expansion first tries each public `mediaset_token`, then a post-permalink fallback for suspicious five-image previews. The larger of feed and expanded photo sets wins.
+
+CDN URLs may expire. A downstream pipeline that needs durable media should download promptly, validate HTTP status and content type, and store its own media checksum.
+
+## Health policy
+
+- Import rows from profiles with `status: succeeded` or `status: partial`; keep the previous watermark for partial coverage.
+- Queue only failed profiles for retry.
+- Treat `coverage_status` beginning with `complete_` as a safe boundary for advancing that profile's watermark.
+- Keep the previous watermark for `partial_*`, `no_public_posts` when unexpected, and `failed`.

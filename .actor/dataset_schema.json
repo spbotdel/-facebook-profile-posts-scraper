@@ -1,0 +1,25 @@
+{
+  "actorSpecification": 1,
+  "fields": {},
+  "views": {
+    "posts": {
+      "title": "Posts",
+      "transformation": {
+        "fields": [
+          "source_profile_name",
+          "raw_text",
+          "created_at",
+          "source_url",
+          "media_final_count",
+          "stats",
+          "author",
+          "coverage_status"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {}
+      }
+    }
+  }
+}

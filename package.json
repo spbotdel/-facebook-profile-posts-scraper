@@ -1,0 +1,22 @@
+{
+  "name": "facebook-profile-posts-all-photos-scraper",
+  "version": "0.1.0-beta.0",
+  "description": "Apify Actor for public Facebook profile posts with all recoverable photo URLs, timestamps, authors, engagement, and cursor checkpoints.",
+  "type": "module",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node src/main.js",
+    "check": "node --check src/main.js && node --check src/facebook.js && node --check src/postParser.js && node --check src/mediaExpansion.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "apify": "^3.4.0",
+    "got-scraping": "^4.1.2",
+    "html-entities": "^2.6.0",
+    "tough-cookie": "^5.1.2"
+  },
+  "devDependencies": {}
+}
