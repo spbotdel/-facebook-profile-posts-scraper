@@ -210,6 +210,13 @@ export function extractProfileBootstrap(html, finalUrl, target = {}) {
     };
 }
 
+export function profileFeedUrl(targetUrl) {
+    const url = new URL(targetUrl);
+    url.hash = '';
+    url.searchParams.set('sk', 'posts');
+    return url.toString();
+}
+
 function routePathForTarget(targetUrl) {
     const url = new URL(targetUrl);
     return `${url.pathname}${url.search}`.replace(/^\//, '');

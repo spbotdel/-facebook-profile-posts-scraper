@@ -52,6 +52,48 @@ test('extractPosts normalizes profile post text, author, timestamp, and photos',
     assert.equal(posts[0].media.imageUrls.length, 1);
 });
 
+test('extractPosts does not emit a nested shared story as another timeline post', () => {
+    const outer = profilePostNode({
+        attachment: {
+            story: {
+                creation_time: 1_450_000_000,
+                post_id: 'old-shared-post',
+                wwwURL: 'https://www.facebook.com/alice/posts/old-shared-post/',
+                comet_sections: {
+                    message: { story: { message: { text: 'Text from an old shared memory' } } },
+                },
+            },
+        },
+    });
+    const posts = extractPosts([{ data: { user: { timeline_list_feed_units: { edges: [{ node: outer }] } } } }]);
+    assert.equal(posts.length, 1);
+    assert.equal(posts[0].post_id, '90001');
+    assert.equal(posts[0].text, 'Fresh public profile post');
+});
+
+test('extractPosts keeps nested shared text as fallback on the outer timeline row', () => {
+    const outer = profilePostNode({
+        content: {
+            story: {
+                post_id: '90002',
+                wwwURL: 'https://www.facebook.com/alice/posts/90002/',
+                actors: [{ id: '101', name: 'Alice', url: 'https://www.facebook.com/alice' }],
+                comet_sections: {},
+                attached_story: {
+                    comet_sections: {
+                        message: { story: { message: { text: 'Only the attached story has text' } } },
+                    },
+                },
+            },
+        },
+    });
+    const posts = extractPosts([{ data: { user: { timeline_list_feed_units: { edges: [{ node: outer }] } } } }]);
+    assert.equal(posts.length, 1);
+    assert.equal(posts[0].post_id, '90002');
+    assert.equal(posts[0].text, 'Only the attached story has text');
+    assert.equal(posts[0].text_source, 'fallback_nested_message');
+});
+
 test('timeline cursor wins over nested comment cursor', () => {
     const payload = {
         data: {
@@ -65,6 +107,34 @@ test('timeline cursor wins over nested comment cursor', () => {
     };
     assert.equal(extractEndCursor([payload]), 'TIMELINE_CURSOR');
     assert.equal(extractHasNextPage([payload]), true);
+});
+
+test('route labels from profile HTML are not accepted as timeline cursors', () => {
+    const payload = {
+        data: {
+            user: {
+                timeline_list_feed_units: {
+                    page_info: { end_cursor: 'photos', has_next_page: false },
+                },
+            },
+        },
+    };
+    assert.equal(extractEndCursor([payload]), null);
+    assert.equal(extractHasNextPage([payload]), false);
+});
+
+test('unrelated Relay cursors are ignored even when they look substantial', () => {
+    const payload = {
+        data: {
+            user: {
+                photos: {
+                    page_info: { end_cursor: 'AQHR_UNRELATED_PHOTO_CURSOR_12345', has_next_page: true },
+                },
+            },
+        },
+    };
+    assert.equal(extractEndCursor([payload]), null);
+    assert.equal(extractHasNextPage([payload]), null);
 });
 
 test('splitAtBoundary stops before known or old posts', () => {

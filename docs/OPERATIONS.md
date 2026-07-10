@@ -16,6 +16,30 @@ The Actor processes profiles independently and writes successful rows immediatel
 
 A Facebook cursor is opaque and can expire. If an older-history cursor stops working, restart from the profile head with a larger bounded limit and deduplicate by post ID.
 
+### Checkpointed export runner
+
+The repository includes `scripts/backfill-profile.mjs` for long, resumable exports through the Apify API:
+
+```bash
+npm run backfill:profile -- \
+  --profile "https://www.facebook.com/example.profile" \
+  --output "./outputs/example-profile" \
+  --chunk 1000 \
+  --max-total 10000 \
+  --proxy-countries US,DE,GB,NL
+```
+
+The runner persists `backfill-state.json` after every successful batch and generates:
+
+- `*_posts.jsonl` with complete normalized rows;
+- `*_texts.csv` and `*_texts.md` for text-and-date analysis;
+- `batches/` snapshots for audit and recovery;
+- `SUMMARY.json` with run IDs, spend, coverage, cursor, and year counts.
+
+Pass `--seed-run RUN_ID` to import an already completed Actor run without paying for another scrape. A run is considered complete only when the Actor reports a complete coverage status such as `complete_feed_exhausted`; a partial run without a cursor is retried instead of silently truncating history.
+
+Do not stop a deep backfill merely because several pages add no new rows. Facebook can expose a long duplicate or non-post tail before `has_next_page` becomes false. Use the explicit coverage status and keep a cost/time ceiling outside the Actor if your workflow requires one.
+
 ## Failure codes
 
 | Code | Meaning | Recommended action |

@@ -68,6 +68,18 @@ The timeline cursor moves from newer posts toward older posts. For a deep backfi
 
 Do not reuse yesterday's backfill cursor to look for new posts. A cursor continues into older history; daily monitoring must start from the profile head and use `knownPostIds` or `sinceDate`.
 
+For a checkpointed local export through the Apify API, use the bundled runner:
+
+```bash
+npm run backfill:profile -- \
+  --profile "https://www.facebook.com/example.profile" \
+  --output "./outputs/example-profile" \
+  --chunk 1000 \
+  --max-total 10000
+```
+
+It writes deduplicated JSONL, CSV, Markdown, per-batch snapshots, and resumable state. Set `APIFY_TOKEN` or authenticate the Apify CLI first; credentials are never written to the export.
+
 ## Output example
 
 ```json
@@ -146,8 +158,11 @@ The beta was tested on Apify residential proxy sessions against two public perso
 | One profile, all photos | 5 newest posts, 42 final photo URLs | 19 s | $0.0088 |
 | Photo-heavy profile | 5 posts, 57 final photo URLs; albums expanded to 6, 19, 11, 9, and 12 photos | part of a 64 s multi-profile run | $0.0133 total run |
 | Incremental known-ID boundary | 0 duplicate rows, `complete_until_known_post` | 55 s during rate-limit recovery | $0.0069 |
+| Deep public-profile text backfill | 462 posts, 303 timeline pages, no empty text/dates/IDs/URLs, `complete_feed_exhausted` | 15 m 38 s | $0.3560 |
 
 These are observed beta runs, not a fixed SLA or price quote. Facebook response time, rate limiting, profile shape, album size, and proxy traffic change cost and duration.
+
+Deep feeds can contain a long tail of duplicate or non-post timeline units before Facebook reports exhaustion. The Actor follows the cursor to the explicit end rather than treating a temporary no-new-post plateau as proof that history is complete.
 
 ## Limitations
 

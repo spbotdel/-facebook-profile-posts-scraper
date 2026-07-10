@@ -261,6 +261,10 @@ export function extractPosts(values, maxPosts = 1000, { includeRawPayload = fals
                 if (includeRawPayload) parsed.raw_comet_payload_json = value;
                 posts.push(parsed);
             }
+            // A timeline unit can contain a complete shared post or memory below it.
+            // Its text/media are already inspected by parseCometSections; do not emit
+            // the nested story as another independent timeline result.
+            return;
         }
         for (const child of Array.isArray(value) ? value : Object.values(value)) visit(child, depth + 1);
     }
@@ -303,17 +307,34 @@ function collectPageInfoCandidates(value, candidates, path = '', depth = 0, seen
     }
 }
 
+function isPlausibleTimelineCursor(cursor) {
+    if (typeof cursor !== 'string') return false;
+    const normalized = cursor.trim();
+    if (normalized.length < 12 || /\s/.test(normalized)) return false;
+    return !/^(?:about|friends|photos|posts|reels|videos)$/i.test(normalized);
+}
+
 function bestPageInfo(values) {
     const candidates = [];
     for (const value of values || []) collectPageInfoCandidates(value, candidates);
-    return candidates.toSorted((left, right) => right.score - left.score).find((item) => item.cursor) || candidates[0] || null;
+    const timelineCandidates = candidates.filter((candidate) => {
+        const path = candidate.path.toLowerCase();
+        if (/comment|feedback|ufi|reaction|liker/.test(path)) return false;
+        return /timeline_list_feed_units|profilecomettimeline|timeline\.page_info|timeline\.pageinfo/.test(path);
+    });
+    return timelineCandidates
+        .toSorted((left, right) => right.score - left.score)
+        .find((item) => isPlausibleTimelineCursor(item.cursor) || item.hasNextPage === false) || null;
 }
 
 export function extractEndCursor(values, responseText = '') {
     const best = bestPageInfo(values);
-    if (best?.cursor) return best.cursor;
+    if (isPlausibleTimelineCursor(best?.cursor)) return best.cursor;
     const cursors = [];
-    for (const match of String(responseText).matchAll(/"end_cursor":"([^"]+)"/g)) cursors.push(normalizeHtml(match[1]));
+    for (const match of String(responseText).matchAll(/"end_cursor":"([^"]+)"/g)) {
+        const cursor = normalizeHtml(match[1]);
+        if (isPlausibleTimelineCursor(cursor)) cursors.push(cursor);
+    }
     return unique(cursors).at(-1) || null;
 }
 

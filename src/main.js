@@ -12,6 +12,7 @@ import {
     graphqlErrors,
     initialProfileVariables,
     parseJsonPayload,
+    profileFeedUrl,
     QUERY_NAMES,
     readProfileTargets,
     refetchProfileVariables,
@@ -37,8 +38,9 @@ import {
 } from './postParser.js';
 import { buildProxySessionId } from './proxySession.js';
 
-const VERSION = '0.1.0-beta.0';
+const VERSION = '0.1.0-beta.1';
 const POSTS_PER_REFETCH = 3;
+const GRAPHQL_RATE_LIMIT_BACKOFF_MS = 2500;
 const GRAPHQL_URL = 'https://www.facebook.com/api/graphql/';
 
 function sleep(ms) {
@@ -78,6 +80,15 @@ function isRateLimit(errors, text, statusCode) {
     if (statusCode === 429) return true;
     if ((errors || []).some((error) => Number(error.code) === 1675004)) return true;
     return /rate limit|too many requests|temporarily blocked/i.test(String(text || ''));
+}
+
+function isInvalidCursor(errors, text) {
+    return (errors || []).some((error) => /invalid cursor/i.test(`${error.summary || ''} ${error.debug_info || ''} ${error.message || ''}`))
+        || /invalid cursor/i.test(String(text || ''));
+}
+
+function isTransientRequestRejection(text) {
+    return /"error":1357054|Your Request Couldn(?:'|\\u0027)t be Processed/i.test(String(text || ''));
 }
 
 function queryCandidateIds(queryName, discovered = {}) {
@@ -126,7 +137,8 @@ async function bootstrapProfile(target, proxyConfiguration, options, reason = 'i
     for (let attempt = 1; attempt <= options.bootstrapRetries; attempt += 1) {
         const session = await createSession(proxyConfiguration, `${reason}-${target.input}`, attempt);
         try {
-            const response = await fetchText(session.client, target.url, {
+            const feedUrl = profileFeedUrl(target.url);
+            const response = await fetchText(session.client, feedUrl, {
                 headers: clientHeaders(),
                 timeout: 35000,
             });
@@ -135,13 +147,14 @@ async function bootstrapProfile(target, proxyConfiguration, options, reason = 'i
             let route = null;
             if (!bootstrap.unavailable && response.statusCode < 500 && response.statusCode !== 429) {
                 try {
-                    route = await resolveProfileRoute(session.client, target.url, bootstrap);
+                    route = await resolveProfileRoute(session.client, feedUrl, bootstrap);
                 } catch (error) {
                     route = { error: error.message };
                 }
             }
             session.bootstrap = {
                 ...bootstrap,
+                feedUrl,
                 profileId: route?.profileId || bootstrap.profileId,
                 profileName: route?.profileName || bootstrap.profileName,
                 profileType: route?.profileType || bootstrap.profileType || 'profile',
@@ -167,7 +180,9 @@ async function bootstrapProfile(target, proxyConfiguration, options, reason = 'i
             if (response.statusCode === 404) {
                 throw new FacebookRequestError('Facebook profile was not found.', {
                     code: 'profile_not_found',
-                    retryable: false,
+                    // Logged-out Facebook occasionally returns a proxy/session-specific 404
+                    // for a valid public handle. Confirm it across the bounded bootstrap pool.
+                    retryable: true,
                 });
             }
             if (response.statusCode === 429 || response.statusCode >= 500) {
@@ -243,7 +258,7 @@ async function executeGraphqlPage(session, parameters) {
                         accept: '*/*',
                         'content-type': 'application/x-www-form-urlencoded',
                         origin: 'https://www.facebook.com',
-                        referer: session.bootstrap.finalUrl || parameters.profileUrl,
+                        referer: session.bootstrap.feedUrl || session.bootstrap.finalUrl || parameters.profileUrl,
                         'sec-fetch-dest': 'empty',
                         'sec-fetch-mode': 'cors',
                         'x-fb-friendly-name': queryName,
@@ -279,6 +294,20 @@ async function executeGraphqlPage(session, parameters) {
                         details: attempt,
                     });
                 }
+                if (parameters.kind === 'refetch' && isInvalidCursor(errors, response.body)) {
+                    throw new FacebookRequestError('Facebook rejected the historical timeline cursor.', {
+                        code: 'invalid_cursor',
+                        retryable: false,
+                        details: attempt,
+                    });
+                }
+                if (isTransientRequestRejection(response.body)) {
+                    throw new FacebookRequestError('Facebook transiently rejected the timeline request.', {
+                        code: 'request_rejected',
+                        retryable: true,
+                        details: attempt,
+                    });
+                }
                 if (response.statusCode >= 500) {
                     throw new FacebookRequestError(`Timeline query returned HTTP ${response.statusCode}.`, {
                         code: 'graphql_http_error',
@@ -290,7 +319,10 @@ async function executeGraphqlPage(session, parameters) {
                     return { posts, endCursor, hasNextPage, errors, attempts, responseLength: response.body.length };
                 }
             } catch (error) {
-                if (error instanceof FacebookRequestError && error.code === 'rate_limited') throw error;
+                if (error instanceof FacebookRequestError
+                    && (error.code === 'rate_limited'
+                        || error.code === 'request_rejected'
+                        || error.retryable === false)) throw error;
                 attempts.push({ queryName, docId, source, error: errorSummary(error) });
             }
         }
@@ -356,7 +388,7 @@ async function collectProfileFeed(target, proxyConfiguration, options) {
         for (let candidateIndex = 0; candidateIndex < 2; candidateIndex += 1) {
             if (candidateIndex === 1) {
                 try {
-                    const canonicalUrl = `https://www.facebook.com/profile.php?id=${profile.id}`;
+                    const canonicalUrl = `https://www.facebook.com/profile.php?id=${profile.id}&sk=posts`;
                     const response = await fetchText(session.client, canonicalUrl, {
                         headers: clientHeaders(),
                         timeout: 35000,
@@ -408,12 +440,11 @@ async function collectProfileFeed(target, proxyConfiguration, options) {
                 stopReason = boundarySplit.hit.type;
             } else if (posts.length >= options.maxPostsPerProfile) {
                 stopReason = 'target_reached';
-            } else if (prefetched.cursor) {
-                cursor = prefetched.cursor;
-                cursorsSeen.add(prefetched.cursor);
-                kind = 'refetch';
-            } else if (prefetched.hasNextPage === false) {
-                stopReason = 'feed_exhausted';
+            } else {
+                // HTML contains several unrelated Relay connections. Use it for posts only;
+                // let the initial timeline query establish an authoritative page cursor.
+                cursor = null;
+                kind = 'initial';
             }
         }
     }
@@ -451,7 +482,8 @@ async function collectProfileFeed(target, proxyConfiguration, options) {
                 bootstrapped = await bootstrapProfile(target, proxyConfiguration, options, `page-${pages}-retry`);
                 session = bootstrapped.session;
                 warnings.push(`Page ${pages} required a fresh Facebook proxy session.`);
-                await sleep(400 * pageAttempt);
+                const retryBaseDelay = error?.code === 'rate_limited' ? GRAPHQL_RATE_LIMIT_BACKOFF_MS : 600;
+                await sleep(retryBaseDelay * pageAttempt);
             }
         }
         if (!page) {
@@ -469,6 +501,11 @@ async function collectProfileFeed(target, proxyConfiguration, options) {
 
         const boundarySplit = splitAtBoundary(page.posts, options.boundary);
         mergePosts(posts, boundarySplit.posts, seen, options.maxPostsPerProfile);
+        if (pages === 1 || pages % 10 === 0) {
+            await Actor.setStatusMessage(
+                `${profile.name || profile.id}: ${posts.length}/${options.maxPostsPerProfile} posts; ${pages} timeline pages`,
+            );
+        }
         if (boundarySplit.stopped) {
             boundaryHit = boundarySplit.hit;
             stopReason = boundarySplit.hit.type;

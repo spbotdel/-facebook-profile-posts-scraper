@@ -7,6 +7,7 @@ import {
     fetchText,
     normalizeProfileTarget,
     parseJsonPayload,
+    profileFeedUrl,
 } from '../src/facebook.js';
 
 test('normalizeProfileTarget supports handles, numeric IDs, and profile.php URLs', () => {
@@ -24,6 +25,17 @@ test('normalizeProfileTarget supports handles, numeric IDs, and profile.php URLs
 test('normalizeProfileTarget rejects non-profile Facebook surfaces', () => {
     assert.throws(() => normalizeProfileTarget('https://www.facebook.com/groups/123/'), /personal profile/i);
     assert.throws(() => normalizeProfileTarget('https://example.com/alice'), /facebook\.com/i);
+});
+
+test('profileFeedUrl preserves profile IDs and opens the public posts route', () => {
+    assert.equal(
+        profileFeedUrl('https://www.facebook.com/Michaelzuh'),
+        'https://www.facebook.com/Michaelzuh?sk=posts',
+    );
+    assert.equal(
+        profileFeedUrl('https://www.facebook.com/profile.php?id=9988&ref=bookmarks'),
+        'https://www.facebook.com/profile.php?id=9988&ref=bookmarks&sk=posts',
+    );
 });
 
 test('extractDocIdsFromText finds profile query document IDs', () => {
