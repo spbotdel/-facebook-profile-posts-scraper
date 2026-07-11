@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.0-beta.3 - 2026-07-11
+
+- Skipped deleted or access-restricted Facebook timeline cards by default so empty unavailable entries no longer consume requested or billable post slots.
+- Added `includeUnavailablePosts` for audit workflows that intentionally need those timeline cards.
+- Added per-profile `unavailablePostsSkipped` diagnostics.
+
+## 0.1.0-beta.2 - 2026-07-11
+
+- Excluded Facebook `.kf` keyframe assets from photo results after content-type validation showed they are animation metadata rather than images.
+- Added Facebook-declared album counts and explicit count-satisfaction fields for auditable `+N` completeness.
+- Added bounded residential proxy-country fallback for profile-level rate limits and transient Facebook rejections.
+- Added country-attempt diagnostics to each profile summary.
+
 ## 0.1.0-beta.1 - 2026-07-10
 
 - Forced profile collection through Facebook's public `?sk=posts` route instead of the mixed default profile surface.

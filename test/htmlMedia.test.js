@@ -27,3 +27,13 @@ test('cleanImageUrls removes small profile/avatar URLs', () => {
         'https://scontent.example.com/v/t39.30808-6/photo_n.jpg?stp=dst-jpg&ctp=s960x960',
     ]);
 });
+
+test('cleanImageUrls removes Facebook keyframe assets that are not photos', () => {
+    const urls = cleanImageUrls([
+        'https://scontent.example.com/m1/v/t6/preview.kf?_nc_sid=7da55a',
+        'https://scontent.example.com/v/t39.30808-6/photo_n.jpg?stp=dst-jpg&ctp=s960x960',
+    ]);
+    assert.deepEqual(urls, [
+        'https://scontent.example.com/v/t39.30808-6/photo_n.jpg?stp=dst-jpg&ctp=s960x960',
+    ]);
+});

@@ -18,6 +18,8 @@ Collect posts exposed on public Facebook personal profiles as normalized JSON. T
 | Incremental monitoring | Stop on `knownPostIds` or `sinceDate` instead of importing old duplicates |
 | Historical backfill | Continue toward older posts with `SUMMARY.pointer.nextCursor` |
 | Multi-profile isolation | A failed or rate-limited profile does not discard healthy profile results |
+| Bounded geo fallback | A rate-limited profile can retry through alternate residential proxy countries |
+| Useful-result accounting | Deleted or access-restricted attachment cards are skipped by default and do not consume requested post slots |
 | Agent-ready output | Clear input fields, deterministic JSON rows, output schema, and run diagnostics |
 
 ## Quick start
@@ -131,6 +133,8 @@ Use these fields when auditing media:
 | `media_preview_count` | Photo URLs visible in the feed payload |
 | `media_expanded_count` | Photo URLs recovered from media-set or permalink expansion |
 | `media_final_count` | Final photo count returned in `media` |
+| `media_declared_count` | Album attachment count declared by Facebook when exposed |
+| `media_declared_count_satisfied` | Whether recovered URLs meet the declared count |
 | `media_completeness` | Expansion outcome such as `expanded`, `feed_complete`, or `likely_incomplete_plusN` |
 | `media_review_severity` | `none`, `low`, `medium`, or `high` audit signal |
 
@@ -139,6 +143,8 @@ Photo URLs are Facebook CDN URLs and may be tokenized or expire. Download or mir
 ## Run summary and health
 
 Each run stores `SUMMARY` in the default key-value store. It includes a separate outcome for every profile, posts returned, pages read, stop reason, coverage status, media counts, warnings, and an older-history cursor.
+
+Facebook can leave public timeline cards whose attached content was deleted or access-restricted. By default the Actor skips these empty cards, continues toward older posts, and reports the unique count in `SUMMARY.profiles[].unavailablePostsSkipped`. Set `includeUnavailablePosts: true` only when an audit intentionally needs those diagnostic rows.
 
 The overall run health is:
 
@@ -150,7 +156,7 @@ The Actor keeps successful profile rows even if another profile is rate-limited 
 
 ## Cloud validation
 
-The beta was tested on Apify residential proxy sessions against two public personal profiles in July 2026.
+The beta was tested on Apify residential proxy sessions against three public personal profiles in July 2026.
 
 | Scenario | Result | Duration | Platform usage |
 | --- | ---: | ---: | ---: |
@@ -159,6 +165,11 @@ The beta was tested on Apify residential proxy sessions against two public perso
 | Photo-heavy profile | 5 posts, 57 final photo URLs; albums expanded to 6, 19, 11, 9, and 12 photos | part of a 64 s multi-profile run | $0.0133 total run |
 | Incremental known-ID boundary | 0 duplicate rows, `complete_until_known_post` | 55 s during rate-limit recovery | $0.0069 |
 | Deep public-profile text backfill | 462 posts, 303 timeline pages, no empty text/dates/IDs/URLs, `complete_feed_exhausted` | 15 m 38 s | $0.3560 |
+| Three-profile all-photo pilot | 60 posts, 386 photo URLs, 40/40 declared albums satisfied, 0 high-risk media rows | 5 m 03 s | $0.1283 |
+| Three separate deep all-photo runs | 300 posts, 1,428 photo URLs, 153/153 declared albums satisfied, 0 duplicate IDs, 0 high-risk media rows | 2 m 39 s to 4 m 50 s per profile | $0.4961 total |
+| Unavailable-card regression | 100 useful posts after skipping 33 deleted/restricted cards; 600 photo URLs; 55/55 declared albums satisfied | 3 m 31 s | $0.1188 |
+
+A six-file download smoke test across all three profiles returned HTTP 200 and `image/jpeg` for every sampled CDN URL. The validation found and removed Facebook `.kf` keyframe metadata that superficially resembles a media URL but is not an image.
 
 These are observed beta runs, not a fixed SLA or price quote. Facebook response time, rate limiting, profile shape, album size, and proxy traffic change cost and duration.
 
@@ -168,6 +179,7 @@ Deep feeds can contain a long tail of duplicate or non-post timeline units befor
 
 - Public personal profiles only. This Actor does not bypass privacy controls, login walls, checkpoints, or Facebook security.
 - A public-looking profile may expose fewer posts to logged-out sessions than to a signed-in browser.
+- Deleted or access-restricted attached content is skipped by default. Use `includeUnavailablePosts` for forensic timeline audits rather than ordinary post collection.
 - Engagement counters are returned when the public payload exposes them; otherwise values are `null`.
 - Video URLs may be reported when exposed, but videos are not downloaded, transcribed, or guaranteed complete. The product focus is posts and photos.
 - Facebook can change internal GraphQL documents and HTML structure without notice. The Actor includes document-ID discovery, fallback IDs, fresh proxy sessions, and explicit diagnostics, but maintenance is still part of this surface.

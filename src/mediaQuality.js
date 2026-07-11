@@ -6,11 +6,18 @@ export function legacyMediaCompleteness({ feedImages, expandedImages, expansionA
     return 'preview_only';
 }
 
-export function mediaCompleteness({ feedImages, expandedImages, expansionAttempted, mediaSetTokens }) {
+export function mediaCompleteness({ feedImages, expandedImages, expansionAttempted, mediaSetTokens, declaredCount }) {
     const feedCount = feedImages.length;
     const expandedCount = expandedImages.length;
     const tokenCount = mediaSetTokens.length;
+    const expectedCount = Number.isInteger(Number(declaredCount)) && Number(declaredCount) > 0
+        ? Number(declaredCount)
+        : null;
+    const finalCount = Math.max(feedCount, expandedCount);
 
+    if (expectedCount && finalCount < expectedCount) {
+        return expansionAttempted ? 'likely_incomplete_declared_count' : 'preview_only_declared_count';
+    }
     if (!feedCount && !expandedCount) return 'none';
     if (expandedCount && expandedCount >= feedCount) return 'expanded';
     if (expandedCount && expandedCount < feedCount) return 'feed_preserved_after_partial_expansion';
@@ -32,7 +39,8 @@ export function mediaReviewSeverity(row) {
     const previewCount = numericMediaCount(row, 'media_preview_count', 'feed_photo_count');
     const expandedCount = numericMediaCount(row, 'media_expanded_count', 'expanded_photo_count');
 
-    if (status === 'likely_incomplete_plusN') return 'high';
+    if (status === 'likely_incomplete_plusN' || status === 'likely_incomplete_declared_count') return 'high';
+    if (status === 'preview_only_declared_count') return 'low';
     if (status === 'media_set_failed_feed_fallback') return previewCount >= 5 ? 'high' : 'low';
     if (legacyStatus === 'failed_expansion') return previewCount >= 5 ? 'high' : 'low';
     if (

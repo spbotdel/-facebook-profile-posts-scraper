@@ -37,8 +37,9 @@ import {
     splitAtBoundary,
 } from './postParser.js';
 import { buildProxySessionId } from './proxySession.js';
+import { proxyCountryCandidates, shouldRetryProfileInAnotherCountry } from './profileRetry.js';
 
-const VERSION = '0.1.0-beta.1';
+const VERSION = '0.1.0-beta.3';
 const POSTS_PER_REFETCH = 3;
 const GRAPHQL_RATE_LIMIT_BACKOFF_MS = 2500;
 const GRAPHQL_URL = 'https://www.facebook.com/api/graphql/';
@@ -270,6 +271,8 @@ async function executeGraphqlPage(session, parameters) {
                 const errors = graphqlErrors(parsed.values);
                 const posts = extractPosts(parsed.values, Math.max(parameters.count * 4, 30), {
                     includeRawPayload: parameters.includeRawPayload,
+                    includeUnavailablePosts: parameters.includeUnavailablePosts,
+                    unavailablePostKeys: parameters.unavailablePostKeys,
                 });
                 const endCursor = extractEndCursor(parsed.values, response.body);
                 const hasNextPage = extractHasNextPage(parsed.values);
@@ -373,6 +376,7 @@ async function collectProfileFeed(target, proxyConfiguration, options) {
     const cursorsSeen = new Set();
     const queryAttempts = [];
     const warnings = [];
+    const unavailablePostKeys = new Set();
     let cursor = options.startCursor || null;
     let kind = cursor ? 'refetch' : 'initial';
     let stopReason = null;
@@ -409,6 +413,8 @@ async function collectProfileFeed(target, proxyConfiguration, options) {
             const embedded = extractEmbeddedJsonValues(candidate.html);
             const candidatePosts = extractPosts(embedded.values, Math.max(options.maxPostsPerProfile, 30), {
                 includeRawPayload: options.includeRawPayload,
+                includeUnavailablePosts: options.includeUnavailablePosts,
+                unavailablePostKeys,
             });
             const candidateCursor = extractEndCursor(embedded.values);
             const candidateHasNextPage = extractHasNextPage(embedded.values);
@@ -463,6 +469,8 @@ async function collectProfileFeed(target, proxyConfiguration, options) {
                     count: options.maxPostsPerProfile - posts.length,
                     omitPinnedPosts: options.omitPinnedPosts,
                     includeRawPayload: options.includeRawPayload,
+                    includeUnavailablePosts: options.includeUnavailablePosts,
+                    unavailablePostKeys,
                     debug: options.debug,
                 });
                 queryAttempts.push({ page: pages, pageAttempt, kind, cursor: cursor || null, sessionId: session.sessionId, attempts: page.attempts });
@@ -552,6 +560,7 @@ async function collectProfileFeed(target, proxyConfiguration, options) {
         nextCursor: cursor,
         pages,
         warnings,
+        unavailablePostsSkipped: unavailablePostKeys.size,
         diagnostics: {
             bootstrapAttempts: bootstrapped.attempts,
             queryAttempts,
@@ -609,11 +618,16 @@ const options = {
     expandAllPhotos: booleanSetting(input, 'expandAllPhotos', true),
     omitPinnedPosts: booleanSetting(input, 'omitPinnedPosts', true),
     includeRawPayload: booleanSetting(input, 'includeRawPayload', false),
+    includeUnavailablePosts: booleanSetting(input, 'includeUnavailablePosts', false),
     bootstrapRetries: integerSetting(input, 'bootstrapRetries', 4, 1, 10),
     graphqlPageRetries: integerSetting(input, 'graphqlPageRetries', 4, 0, 5),
     mediaExpansionConcurrency: integerSetting(input, 'mediaExpansionConcurrency', 3, 1, 8),
     mediaSetRetries: integerSetting(input, 'mediaSetRetries', 1, 0, 5),
     proxyCountry: String(input.proxyCountry || 'US').trim().toUpperCase(),
+    fallbackProxyCountries: unique((input.fallbackProxyCountries || ['DE', 'GB', 'NL'])
+        .map((value) => String(value || '').trim().toUpperCase())
+        .filter((value) => /^[A-Z]{2}$/.test(value)))
+        .slice(0, 3),
     startCursor: typeof input.startCursor === 'string' && input.startCursor.trim() ? input.startCursor.trim() : null,
     debug: booleanSetting(input, 'debug', false),
     boundary: {
@@ -624,46 +638,72 @@ const options = {
 
 const selectedTargets = targets.slice(0, options.maxProfilesPerRun);
 const skippedTargets = targets.slice(options.maxProfilesPerRun);
-const proxyConfiguration = await Actor.createProxyConfiguration({
-    groups: ['RESIDENTIAL'],
-    countryCode: options.proxyCountry,
-});
-
 const profileSummaries = [];
 let totalRows = 0;
 for (const [targetIndex, target] of selectedTargets.entries()) {
     await Actor.setStatusMessage(`Profile ${targetIndex + 1}/${selectedTargets.length}: ${target.input}`);
-    try {
-        const feed = await collectProfileFeed(target, proxyConfiguration, options);
-        const rows = await normalizeAndExpand(feed, proxyConfiguration, options);
-        for (let offset = 0; offset < rows.length; offset += 100) {
-            await Actor.pushData(rows.slice(offset, offset + 100));
-        }
-        totalRows += rows.length;
-        profileSummaries.push({
-            status: feed.coverageStatus.startsWith('partial_') ? 'partial' : 'succeeded',
-            input: target.input,
-            profile: feed.profile,
-            postsReturned: rows.length,
-            pagesRead: feed.pages,
-            stopReason: feed.stopReason,
-            coverageStatus: feed.coverageStatus,
-            boundaryHit: feed.boundaryHit,
-            pointer: {
-                direction: 'newest_to_older',
-                nextCursor: feed.nextCursor,
-                useFor: 'historical_backfill_only',
-            },
-            media: {
-                postsWithPhotos: rows.filter((row) => row.media_final_count > 0).length,
-                finalPhotoUrls: rows.reduce((sum, row) => sum + row.media_final_count, 0),
-                expansionAttempted: rows.filter((row) => row.media_expansion?.attempted).length,
-                highReviewRisk: rows.filter((row) => row.media_review_severity === 'high').length,
-            },
-            warnings: feed.warnings,
-            diagnostics: options.debug ? feed.diagnostics : undefined,
+    const countryAttempts = [];
+    const countries = proxyCountryCandidates(options.proxyCountry, options.fallbackProxyCountries);
+    let completed = false;
+    let lastError = null;
+    for (const [countryIndex, countryCode] of countries.entries()) {
+        const proxyConfiguration = await Actor.createProxyConfiguration({
+            groups: ['RESIDENTIAL'],
+            countryCode,
         });
-    } catch (error) {
+        try {
+            const feed = await collectProfileFeed(target, proxyConfiguration, options);
+            const rows = await normalizeAndExpand(feed, proxyConfiguration, options);
+            countryAttempts.push({ countryCode, status: 'succeeded' });
+            for (let offset = 0; offset < rows.length; offset += 100) {
+                await Actor.pushData(rows.slice(offset, offset + 100));
+            }
+            totalRows += rows.length;
+            profileSummaries.push({
+                status: feed.coverageStatus.startsWith('partial_') ? 'partial' : 'succeeded',
+                input: target.input,
+                profile: feed.profile,
+                postsReturned: rows.length,
+                pagesRead: feed.pages,
+                stopReason: feed.stopReason,
+                coverageStatus: feed.coverageStatus,
+                proxyCountryUsed: countryCode,
+                countryAttempts,
+                boundaryHit: feed.boundaryHit,
+                pointer: {
+                    direction: 'newest_to_older',
+                    nextCursor: feed.nextCursor,
+                    useFor: 'historical_backfill_only',
+                },
+                unavailablePostsSkipped: feed.unavailablePostsSkipped,
+                media: {
+                    postsWithPhotos: rows.filter((row) => row.media_final_count > 0).length,
+                    finalPhotoUrls: rows.reduce((sum, row) => sum + row.media_final_count, 0),
+                    expansionAttempted: rows.filter((row) => row.media_expansion?.attempted).length,
+                    highReviewRisk: rows.filter((row) => row.media_review_severity === 'high').length,
+                },
+                warnings: feed.warnings,
+                diagnostics: options.debug ? feed.diagnostics : undefined,
+            });
+            completed = true;
+            break;
+        } catch (error) {
+            lastError = error;
+            countryAttempts.push({ countryCode, status: 'failed', error: errorSummary(error) });
+            const hasFallback = countryIndex < countries.length - 1;
+            if (!hasFallback || !shouldRetryProfileInAnotherCountry(error)) break;
+            log.warning(`Retrying profile through ${countries[countryIndex + 1]} after ${error.code}.`, {
+                profile: target.input,
+                previousCountry: countryCode,
+            });
+            await sleep(GRAPHQL_RATE_LIMIT_BACKOFF_MS * (countryIndex + 1));
+        }
+    }
+    if (!completed) {
+        const error = lastError || new FacebookRequestError('Profile collection failed.', {
+            code: 'profile_failed',
+            retryable: false,
+        });
         log.error(`Profile failed: ${target.input}`, { error: error.message, code: error.code });
         profileSummaries.push({
             status: 'failed',
@@ -671,6 +711,7 @@ for (const [targetIndex, target] of selectedTargets.entries()) {
             postsReturned: 0,
             coverageStatus: 'failed',
             error: errorSummary(error),
+            countryAttempts,
             diagnostics: options.debug ? error?.details : undefined,
         });
     }

@@ -174,7 +174,16 @@ export function normalizeProfilePost(post, rank, profile, expansion, options = {
     const usedExpansion = finalImages === expandedImages;
     const expansionAttempted = Boolean(expansion);
     const mediaSetTokens = mediaSetTokensForPost(post);
-    const completeness = mediaCompleteness({ feedImages, expandedImages, expansionAttempted, mediaSetTokens });
+    const declaredCount = Number.isInteger(Number(post?.media?.declaredCount)) && Number(post.media.declaredCount) > 0
+        ? Number(post.media.declaredCount)
+        : null;
+    const completeness = mediaCompleteness({
+        feedImages,
+        expandedImages,
+        expansionAttempted,
+        mediaSetTokens,
+        declaredCount,
+    });
     const legacyCompleteness = legacyMediaCompleteness({ feedImages, expandedImages, expansionAttempted });
     const reviewSeverity = mediaReviewSeverity({
         media_completeness: completeness,
@@ -230,6 +239,8 @@ export function normalizeProfilePost(post, rank, profile, expansion, options = {
         media_preview_count: feedImages.length,
         media_expanded_count: expandedImages.length,
         media_final_count: finalImages.length,
+        media_declared_count: declaredCount,
+        media_declared_count_satisfied: declaredCount ? finalImages.length >= declaredCount : null,
         media_completeness: completeness,
         media_completeness_legacy: legacyCompleteness,
         media_review_severity: reviewSeverity,
@@ -238,6 +249,7 @@ export function normalizeProfilePost(post, rank, profile, expansion, options = {
             feed_photo_count: feedImages.length,
             expanded_photo_count: expandedImages.length,
             final_photo_count: finalImages.length,
+            facebook_declared_attachment_count: declaredCount,
             expanded_raw_count: expansion?.rawCount || 0,
             video_url_count: post?.media?.videoUrls?.length || 0,
         },

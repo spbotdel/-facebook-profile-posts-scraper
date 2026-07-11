@@ -10,6 +10,8 @@
 
 The Actor processes profiles independently and writes successful rows immediately after each profile completes.
 
+`SUMMARY.profiles[].unavailablePostsSkipped` counts unique timeline cards whose attached Facebook content was explicitly deleted or access-restricted. These cards are skipped by default and do not consume `maxPostsPerProfile`. Enable `includeUnavailablePosts` only for an audit that needs their IDs and timestamps.
+
 ## Historical backfill
 
 `SUMMARY.profiles[].pointer.nextCursor` moves from newer posts to older posts. Use it only to continue a historical backfill for the same profile.
@@ -52,6 +54,8 @@ Do not stop a deep backfill merely because several pages add no new rows. Facebo
 | `graphql_query_failed` | Current query documents produced no usable feed | Rebuild with refreshed document IDs or use dynamic bundle discovery diagnostics |
 | `page_failed` | Timeline page exhausted its bounded retries | Retry only that profile from the profile head or saved backfill cursor |
 
+For profile-level transient failures, the Actor first rotates sessions in `proxyCountry`, then tries the bounded `fallbackProxyCountries` list. `SUMMARY.profiles[].proxyCountryUsed` records the successful country and `countryAttempts` records each country-level outcome. Permanent privacy and login failures are not retried across countries.
+
 ## Debugging
 
 Set `debug: true` for a bounded test. `SUMMARY.profiles[].diagnostics` then includes:
@@ -63,6 +67,8 @@ Set `debug: true` for a bounded test. `SUMMARY.profiles[].diagnostics` then incl
 - dynamically discovered document IDs.
 
 Do not leave `includeRawPayload` or `debug` enabled for large routine runs unless you need them. They increase storage and make summaries much larger.
+
+If users specifically need deleted/restricted timeline-card diagnostics, set `includeUnavailablePosts: true`. Normal monitoring should leave it disabled so an inaccessible share cannot displace an accessible post from the requested result count.
 
 ## Media handling
 

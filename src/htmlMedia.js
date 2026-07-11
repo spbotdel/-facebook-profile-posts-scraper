@@ -59,10 +59,14 @@ function isLikelyAvatar(url) {
         || /[?&]_nc_sid=(?:e99d92|7565cd|33e84f)/i.test(value);
 }
 
+function isFacebookKeyframeAsset(url) {
+    return /\.kf(?:[?&#]|$)/i.test(String(url || ''));
+}
+
 export function cleanImageUrls(urls) {
     const best = new Map();
     for (const url of urls || []) {
-        if (!url || isLikelyAvatar(url)) continue;
+        if (!url || isLikelyAvatar(url) || isFacebookKeyframeAsset(url)) continue;
         const key = mediaKey(url);
         const previous = best.get(key);
         if (!previous || mediaScore(url) > mediaScore(previous)) best.set(key, url);

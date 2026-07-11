@@ -43,6 +43,29 @@ test('mediaCompleteness marks partial expansion as feed-preserved instead of a h
     );
 });
 
+test('mediaCompleteness compares recovered photos with Facebook declared album count', () => {
+    assert.equal(
+        mediaCompleteness({
+            feedImages: ['a', 'b', 'c', 'd', 'e'],
+            expandedImages: ['a', 'b', 'c', 'd', 'e', 'f'],
+            expansionAttempted: true,
+            mediaSetTokens: ['pcb.1'],
+            declaredCount: 13,
+        }),
+        'likely_incomplete_declared_count',
+    );
+    assert.equal(
+        mediaCompleteness({
+            feedImages: ['a', 'b', 'c', 'd', 'e'],
+            expandedImages: Array.from({ length: 13 }, (_, index) => String(index)),
+            expansionAttempted: true,
+            mediaSetTokens: ['pcb.1'],
+            declaredCount: 13,
+        }),
+        'expanded',
+    );
+});
+
 test('legacyMediaCompleteness keeps old benchmark buckets available', () => {
     assert.equal(
         legacyMediaCompleteness({
@@ -91,6 +114,8 @@ test('isMediaExpansionRetryCandidate selects only risky media rows', () => {
 });
 
 test('mediaReviewSeverity separates high-risk retry rows from audit-only rows', () => {
+    assert.equal(mediaReviewSeverity({ media_completeness: 'likely_incomplete_declared_count' }), 'high');
+    assert.equal(mediaReviewSeverity({ media_completeness: 'preview_only_declared_count' }), 'low');
     assert.equal(mediaReviewSeverity({ media_completeness: 'likely_incomplete_plusN' }), 'high');
     assert.equal(mediaReviewSeverity({
         media_completeness: 'media_set_failed_feed_fallback',

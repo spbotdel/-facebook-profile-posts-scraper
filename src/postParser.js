@@ -147,11 +147,14 @@ function collectMedia(obj) {
     const tokens = [];
     const mediaIds = [];
     const videoUrls = [];
+    const declaredCounts = [];
     const seen = new Set();
     function walk(value, path = '', depth = 0) {
         if (!value || typeof value !== 'object' || depth > 20 || seen.has(value)) return;
         seen.add(value);
         const type = String(value.__typename || '');
+        const declaredCount = Number(value.all_subattachments?.count);
+        if (Number.isInteger(declaredCount) && declaredCount > 0) declaredCounts.push(declaredCount);
         if (typeof value.id === 'string' && /^(?:pcb\.|set\.)/.test(value.id)) tokens.push(value.id);
         if (typeof value.id === 'string' && /^(?:Photo|Video)$/i.test(type)) mediaIds.push(value.id);
         for (const [key, child] of Object.entries(value)) {
@@ -182,6 +185,7 @@ function collectMedia(obj) {
         videoUrls: unique(videoUrls).slice(0, 20),
         mediaSetTokens: unique(tokens).slice(0, 20),
         mediaIds: unique(mediaIds).slice(0, 120),
+        declaredCount: declaredCounts.length ? Math.max(...declaredCounts) : null,
     };
 }
 
@@ -246,7 +250,11 @@ export function makePostKeys(post) {
     ]);
 }
 
-export function extractPosts(values, maxPosts = 1000, { includeRawPayload = false } = {}) {
+export function extractPosts(values, maxPosts = 1000, {
+    includeRawPayload = false,
+    includeUnavailablePosts = false,
+    unavailablePostKeys = null,
+} = {}) {
     const posts = [];
     const seenPosts = new Set();
     const seenObjects = new Set();
@@ -256,6 +264,13 @@ export function extractPosts(values, maxPosts = 1000, { includeRawPayload = fals
         const parsed = value.comet_sections ? parseCometSections(value) : null;
         if (parsed && (parsed.post_id || parsed.post_url || parsed.creation_time)) {
             const keys = makePostKeys(parsed);
+            if (!includeUnavailablePosts && parsed.text_missing_reason === 'content_unavailable') {
+                if (unavailablePostKeys instanceof Set) {
+                    const diagnosticKey = keys[0] || `story:${parsed.story_id || parsed.creation_time || 'unknown'}`;
+                    unavailablePostKeys.add(diagnosticKey);
+                }
+                return;
+            }
             if (keys.length && !keys.some((key) => seenPosts.has(key))) {
                 keys.forEach((key) => seenPosts.add(key));
                 if (includeRawPayload) parsed.raw_comet_payload_json = value;

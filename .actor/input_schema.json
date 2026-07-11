@@ -82,6 +82,14 @@
       "default": false,
       "sectionCaption": "Advanced controls"
     },
+    "includeUnavailablePosts": {
+      "title": "Include unavailable timeline cards",
+      "type": "boolean",
+      "description": "Return timeline cards whose shared or attached Facebook content has been deleted or access-restricted. Disabled by default so empty unavailable cards do not count toward the requested post total.",
+      "editor": "checkbox",
+      "default": false,
+      "sectionCaption": "Advanced controls"
+    },
     "bootstrapRetries": {
       "title": "Bootstrap retries",
       "type": "integer",
@@ -108,6 +116,23 @@
       "description": "Two-letter country code for Apify residential proxy sessions.",
       "editor": "textfield",
       "default": "US",
+      "sectionCaption": "Advanced controls"
+    },
+    "fallbackProxyCountries": {
+      "title": "Rate-limit fallback countries",
+      "type": "array",
+      "description": "Up to three residential proxy countries tried only when Facebook temporarily rate-limits or rejects a profile in the primary country.",
+      "editor": "stringList",
+      "default": [
+        "DE",
+        "GB",
+        "NL"
+      ],
+      "maxItems": 3,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z]{2}$"
+      },
       "sectionCaption": "Advanced controls"
     },
     "mediaExpansionConcurrency": {

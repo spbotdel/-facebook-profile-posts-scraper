@@ -1,6 +1,6 @@
 # Output contract
 
-Each default dataset item represents one public Facebook profile post.
+Each default dataset item represents one accessible public Facebook profile post. Timeline cards whose attached content is explicitly deleted or access-restricted are skipped by default. Set `includeUnavailablePosts: true` to return them as diagnostic rows with `text_missing_reason: content_unavailable`.
 
 ## Identity and time
 
@@ -29,6 +29,8 @@ Each default dataset item represents one public Facebook profile post.
 
 Shared or attachment-style posts can store their useful body below the normal message path. The fallback extractor scores nested message and attachment-title paths while suppressing common Facebook UI labels.
 
+An empty `raw_text` is not automatically an extraction failure. Image-only posts use `text_missing_reason: media_accessibility_caption_only` or `no_message_text`. Deleted/restricted attachment cards use `content_unavailable` and are omitted unless explicitly requested.
+
 ## Engagement
 
 `stats` contains `reactions`, `comments`, and `shares`. Each value can be `null` when Facebook omits that counter from the logged-out public payload.
@@ -44,9 +46,13 @@ Shared or attachment-style posts can store their useful body below the normal me
 | `expanded` | Expansion returned at least as many photos as the feed |
 | `feed_complete` | Feed photos were retained and no hidden-photo risk was detected |
 | `feed_preserved_after_partial_expansion` | Expansion was smaller, so the larger feed set was preserved |
+| `likely_incomplete_declared_count` | Facebook declared more album attachments than the Actor recovered after expansion |
+| `preview_only_declared_count` | Facebook declared more album attachments, but photo expansion was disabled |
 | `likely_incomplete_plusN` | A photo set probably contains more than the recovered URLs |
 | `media_set_failed_feed_fallback` | Expansion failed; feed photos remain available |
 | `none` | No photos were exposed |
+
+`media_declared_count` stores Facebook's `all_subattachments.count` when exposed. `media_declared_count_satisfied` is `true` when the final recovered URL count meets or exceeds that declaration, `false` when it does not, and `null` when Facebook provided no declared count. Facebook keyframe (`.kf`) assets are excluded because they are animation metadata rather than downloadable photos.
 
 ## Coverage
 

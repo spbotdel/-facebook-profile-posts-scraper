@@ -11,6 +11,8 @@
           "created_at",
           "source_url",
           "media_final_count",
+          "media_declared_count",
+          "media_declared_count_satisfied",
           "stats",
           "author",
           "coverage_status"

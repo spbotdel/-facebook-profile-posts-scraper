@@ -52,6 +52,26 @@ test('extractPosts normalizes profile post text, author, timestamp, and photos',
     assert.equal(posts[0].media.imageUrls.length, 1);
 });
 
+test('extractPosts retains Facebook declared album count for completeness checks', () => {
+    const node = profilePostNode({
+        attachment: {
+            story: {
+                attachments: [{
+                    styles: {
+                        attachment: {
+                            mediaset_token: 'pcb.90001',
+                            all_subattachments: { count: 13, nodes: [] },
+                        },
+                    },
+                }],
+            },
+        },
+    });
+    const posts = extractPosts([{ data: { user: { timeline_list_feed_units: { edges: [{ node }] } } } }]);
+    assert.equal(posts[0].media.declaredCount, 13);
+    assert.deepEqual(posts[0].media.mediaSetTokens, ['pcb.90001']);
+});
+
 test('extractPosts does not emit a nested shared story as another timeline post', () => {
     const outer = profilePostNode({
         attachment: {
@@ -92,6 +112,52 @@ test('extractPosts keeps nested shared text as fallback on the outer timeline ro
     assert.equal(posts[0].post_id, '90002');
     assert.equal(posts[0].text, 'Only the attached story has text');
     assert.equal(posts[0].text_source, 'fallback_nested_message');
+});
+
+test('extractPosts skips unavailable Facebook timeline cards by default', () => {
+    const unavailable = profilePostNode({
+        content: {
+            story: {
+                post_id: 'unavailable-1',
+                wwwURL: 'https://www.facebook.com/alice/posts/unavailable-1/',
+                attachments: [{
+                    styles: {
+                        attachment: {
+                            title_with_entities: { text: "This content isn't available right now" },
+                            description: {
+                                text: "When this happens, it's usually because the owner only shared it with a small group of people, changed who can see it or it's been deleted.",
+                            },
+                        },
+                    },
+                }],
+            },
+        },
+    });
+    const skipped = new Set();
+    const posts = extractPosts([unavailable], 10, { unavailablePostKeys: skipped });
+    assert.equal(posts.length, 0);
+    assert.equal(skipped.size, 1);
+});
+
+test('extractPosts can include unavailable timeline cards for audits', () => {
+    const unavailable = profilePostNode({
+        content: {
+            story: {
+                post_id: 'unavailable-2',
+                wwwURL: 'https://www.facebook.com/alice/posts/unavailable-2/',
+                attachments: [{
+                    styles: {
+                        attachment: {
+                            title_with_entities: { text: "This content isn't available right now" },
+                        },
+                    },
+                }],
+            },
+        },
+    });
+    const posts = extractPosts([unavailable], 10, { includeUnavailablePosts: true });
+    assert.equal(posts.length, 1);
+    assert.equal(posts[0].text_missing_reason, 'content_unavailable');
 });
 
 test('timeline cursor wins over nested comment cursor', () => {
