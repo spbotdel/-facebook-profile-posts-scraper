@@ -67,5 +67,21 @@ An empty `raw_text` is not automatically an extraction failure. Image-only posts
 | `partial_stalled_cursor` | Facebook repeated a cursor |
 | `partial_page_limit` | Internal safety page limit was reached |
 | `partial_error` | Earlier rows were preserved after a later page exhausted its retries |
+| `partial_charge_limit` | The caller's maximum run charge reduced the requested rows or stopped later profiles |
 
 Always pair the dataset with `SUMMARY` when a caller needs proof of coverage rather than just rows.
+
+## Charging metadata
+
+`SUMMARY.charging` makes budget-bounded runs explicit:
+
+| Field | Meaning |
+| --- | --- |
+| `pricingModel` | Active Apify pricing model for the run |
+| `resultEventEnabled` | Whether dataset rows are charged as pay-per-event results |
+| `perResultPriceUsd` | Price of one result event when available |
+| `maxTotalChargeUsd` | User-configured maximum total charge, or `null` when not bounded |
+| `chargeLimitReached` | No additional result could be charged at the end of processing |
+| `budgetLimited` | Requested coverage was actually reduced by the run budget |
+
+Each profile summary includes `requestedMaxPosts` and `effectiveMaxPosts`. Profiles not started because the remaining result budget was exhausted appear in `SUMMARY.skippedProfilesByChargeLimit`.

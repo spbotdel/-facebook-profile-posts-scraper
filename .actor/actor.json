@@ -3,7 +3,10 @@
   "name": "facebook-profile-posts-all-photos-scraper",
   "title": "Facebook Profile Posts & All Photos Scraper",
   "description": "Scrape public Facebook personal profile posts with text, timestamps, stable post URLs, engagement, and all recoverable photo URLs, including hidden +N grids.",
-  "version": "0.1",
+  "version": "1.0",
+  "defaultMemoryMbytes": 1024,
+  "minMemoryMbytes": 512,
+  "maxMemoryMbytes": 1024,
   "build": {
     "dockerfile": "../Dockerfile"
   },

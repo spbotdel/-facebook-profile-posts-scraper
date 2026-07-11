@@ -2,7 +2,7 @@
 
 Collect posts exposed on public Facebook personal profiles as normalized JSON. The Actor starts from the newest visible posts and returns text, Facebook publication timestamps, stable identifiers, author data, engagement when available, and all recoverable photo URLs, including photos hidden behind `+N` album grids.
 
-> Beta: the core feed, pagination, incremental boundaries, session recovery, and photo expansion paths have been validated in Apify cloud. Private, friends-only, and login-only content is intentionally out of scope.
+The production pipeline has been validated in Apify cloud across shallow, incremental, multi-profile, and deep-history runs. Private, friends-only, and login-only content is intentionally out of scope.
 
 [Open the Actor on Apify](https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper)
 
@@ -21,6 +21,14 @@ Collect posts exposed on public Facebook personal profiles as normalized JSON. T
 | Bounded geo fallback | A rate-limited profile can retry through alternate residential proxy countries |
 | Useful-result accounting | Deleted or access-restricted attachment cards are skipped by default and do not consume requested post slots |
 | Agent-ready output | Clear input fields, deterministic JSON rows, output schema, and run diagnostics |
+
+## Pricing
+
+The Store price is **$4.99 per 1,000 returned posts**. Platform usage is included, so buyers do not receive a second compute or proxy charge from this Actor.
+
+Each dataset row is one billable public Facebook profile post. All photo URLs recovered for that post are included in the same result. The small Actor-start event is shown separately by Apify.
+
+If a caller sets `maximum cost per run`, the Actor calculates how many result rows still fit, reduces collection before feed and album work, and stops before processing additional profiles. A budget-bounded run reports `partial_charge_limit` and charging details in `SUMMARY`; it does not silently pretend that the requested coverage completed.
 
 ## Quick start
 
@@ -142,7 +150,7 @@ Photo URLs are Facebook CDN URLs and may be tokenized or expire. Download or mir
 
 ## Run summary and health
 
-Each run stores `SUMMARY` in the default key-value store. It includes a separate outcome for every profile, posts returned, pages read, stop reason, coverage status, media counts, warnings, and an older-history cursor.
+Each run stores `SUMMARY` in the default key-value store. It includes a separate outcome for every profile, requested and effective post limits, posts returned, pages read, stop reason, coverage status, media counts, warnings, and an older-history cursor. `SUMMARY.charging` records the pricing model, result price, user run limit, and whether that limit reduced coverage.
 
 Facebook can leave public timeline cards whose attached content was deleted or access-restricted. By default the Actor skips these empty cards, continues toward older posts, and reports the unique count in `SUMMARY.profiles[].unavailablePostsSkipped`. Set `includeUnavailablePosts: true` only when an audit intentionally needs those diagnostic rows.
 
@@ -156,7 +164,7 @@ The Actor keeps successful profile rows even if another profile is rate-limited 
 
 ## Cloud validation
 
-The beta was tested on Apify residential proxy sessions against three public personal profiles in July 2026.
+The release was tested on Apify residential proxy sessions against three public personal profiles in July 2026.
 
 | Scenario | Result | Duration | Platform usage |
 | --- | ---: | ---: | ---: |
@@ -171,7 +179,7 @@ The beta was tested on Apify residential proxy sessions against three public per
 
 A six-file download smoke test across all three profiles returned HTTP 200 and `image/jpeg` for every sampled CDN URL. The validation found and removed Facebook `.kf` keyframe metadata that superficially resembles a media URL but is not an image.
 
-These are observed beta runs, not a fixed SLA or price quote. Facebook response time, rate limiting, profile shape, album size, and proxy traffic change cost and duration.
+These are observed validation runs, not a fixed SLA. Facebook response time, rate limiting, profile shape, album size, and proxy traffic change cost and duration.
 
 Deep feeds can contain a long tail of duplicate or non-post timeline units before Facebook reports exhaustion. The Actor follows the cursor to the explicit end rather than treating a temporary no-new-post plateau as proof that history is complete.
 
@@ -212,6 +220,8 @@ apify push
 The implementation uses direct HTTP and logged-out Facebook GraphQL requests. It does not launch Playwright or ship a Facebook session.
 
 See [Architecture](docs/ARCHITECTURE.md) for the processing pipeline.
+
+Maintainers can use the [Store publication checklist](docs/STORE_PUBLICATION.md) for the release and customer-account smoke test.
 
 ## Responsible use
 

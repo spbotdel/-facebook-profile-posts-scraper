@@ -10,6 +10,8 @@
 
 The Actor processes profiles independently and writes successful rows immediately after each profile completes.
 
+For pay-per-event runs, the Actor also respects Apify's user-configured maximum run charge. It caps `maxPostsPerProfile` before collecting a profile and stops before later profiles when no paid result capacity remains. Inspect `SUMMARY.charging.budgetLimited` and `SUMMARY.skippedProfilesByChargeLimit`; keep the previous watermark for any profile with `partial_charge_limit`.
+
 `SUMMARY.profiles[].unavailablePostsSkipped` counts unique timeline cards whose attached Facebook content was explicitly deleted or access-restricted. These cards are skipped by default and do not consume `maxPostsPerProfile`. Enable `includeUnavailablePosts` only for an audit that needs their IDs and timestamps.
 
 ## Historical backfill
@@ -82,3 +84,4 @@ CDN URLs may expire. A downstream pipeline that needs durable media should downl
 - Queue only failed profiles for retry.
 - Treat `coverage_status` beginning with `complete_` as a safe boundary for advancing that profile's watermark.
 - Keep the previous watermark for `partial_*`, `no_public_posts` when unexpected, and `failed`.
+- A `partial_charge_limit` is not a Facebook failure. Increase the run charge limit or split profiles into separate runs, then retry from the profile head with the same known-ID boundary.

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0 - 2026-07-11
+
+- Promoted the validated public-profile feed and all-photo recovery pipeline to the first production release.
+- Added pay-per-event budget awareness so `maximum cost per run` caps collection before expensive feed and album work.
+- Added `partial_charge_limit`, per-profile requested/effective limits, skipped-profile diagnostics, and run-level charging metadata.
+- Bounded production memory to 512-1024 MB with a 1024 MB default.
+- Kept the existing per-profile failure isolation, incremental boundaries, historical cursors, and auditable photo completeness contract.
+
 ## 0.1.0-beta.3 - 2026-07-11
 
 - Skipped deleted or access-restricted Facebook timeline cards by default so empty unavailable entries no longer consume requested or billable post slots.

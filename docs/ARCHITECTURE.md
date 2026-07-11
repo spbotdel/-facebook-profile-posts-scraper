@@ -21,6 +21,9 @@ post parser -> text, time, author, IDs, stats, media tokens
 boundary filter -> knownPostIds / sinceDate / requested limit
     |
     v
+pay-per-event budget cap -> effective per-profile result limit
+    |
+    v
 photo expansion -> media set -> permalink fallback -> preserve larger set
     |
     v
@@ -34,7 +37,7 @@ normalized dataset rows + per-profile SUMMARY
 - Apify residential proxy sessions with bounded rotation.
 - Per-profile failure isolation.
 - Newest-to-older cursor pagination.
-- Dataset rows are the billable/result unit if pay-per-result pricing is configured later.
+- Dataset rows are the pay-per-event billable result unit; the charging manager caps paid work before feed and album processing.
 
 ## Main modules
 
@@ -45,6 +48,7 @@ normalized dataset rows + per-profile SUMMARY
 | `src/mediaExpansion.js` | Public album/permalink fetches, final photo selection, normalized output rows |
 | `src/mediaQuality.js` | Completeness and review-risk classification |
 | `src/proxySession.js` | Apify-compatible proxy session IDs |
+| `src/charging.js` | Pay-per-event budget calculation and result-limit accounting |
 | `src/main.js` | Actor lifecycle, retries, per-profile orchestration, dataset and SUMMARY output |
 
 ## Maintenance points

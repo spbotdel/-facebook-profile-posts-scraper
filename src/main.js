@@ -2,6 +2,7 @@ import { Actor, log } from 'apify';
 import { gotScraping } from 'got-scraping';
 import { CookieJar } from 'tough-cookie';
 
+import { createResultChargeBudget } from './charging.js';
 import {
     buildGraphqlBody,
     discoverProfileDocIds,
@@ -39,7 +40,7 @@ import {
 import { buildProxySessionId } from './proxySession.js';
 import { proxyCountryCandidates, shouldRetryProfileInAnotherCountry } from './profileRetry.js';
 
-const VERSION = '0.1.0-beta.3';
+const VERSION = '1.0.0';
 const POSTS_PER_REFETCH = 3;
 const GRAPHQL_RATE_LIMIT_BACKOFF_MS = 2500;
 const GRAPHQL_URL = 'https://www.facebook.com/api/graphql/';
@@ -605,10 +606,34 @@ async function normalizeAndExpand(feed, proxyConfiguration, options) {
     });
 }
 
+async function pushRowsWithinChargeLimit(rows, chargeBudget) {
+    let pushedRows = 0;
+    let limitReached = false;
+    for (let offset = 0; offset < rows.length; offset += 100) {
+        const remaining = chargeBudget.remainingRows();
+        if (remaining <= 0) {
+            limitReached = chargeBudget.resultEventEnabled;
+            break;
+        }
+        const chunkLimit = Number.isFinite(remaining) ? Math.min(100, remaining) : 100;
+        const chunk = rows.slice(offset, offset + chunkLimit);
+        if (!chunk.length) break;
+        const chargeResult = await Actor.pushData(chunk);
+        const written = chargeBudget.pushedRows(chunk.length, chargeResult);
+        pushedRows += written;
+        if (written < chunk.length || chargeBudget.limitReached(chargeResult)) {
+            limitReached = true;
+            break;
+        }
+    }
+    return { pushedRows, limitReached };
+}
+
 await Actor.init();
 
 const startedAt = new Date();
 const input = await Actor.getInput() || {};
+const chargeBudget = createResultChargeBudget(Actor.getChargingManager());
 const targets = readProfileTargets(input);
 if (!targets.length) throw new Error('Provide at least one public Facebook personal profile in profileUrls.');
 
@@ -639,8 +664,25 @@ const options = {
 const selectedTargets = targets.slice(0, options.maxProfilesPerRun);
 const skippedTargets = targets.slice(options.maxProfilesPerRun);
 const profileSummaries = [];
+const skippedProfilesByChargeLimit = [];
 let totalRows = 0;
+let chargeLimitReached = false;
+let budgetLimited = false;
 for (const [targetIndex, target] of selectedTargets.entries()) {
+    const effectiveMaxPosts = chargeBudget.capRequestedRows(options.maxPostsPerProfile);
+    if (effectiveMaxPosts <= 0) {
+        chargeLimitReached = chargeBudget.resultEventEnabled;
+        budgetLimited = chargeLimitReached;
+        skippedProfilesByChargeLimit.push(
+            ...selectedTargets.slice(targetIndex).map((remainingTarget) => remainingTarget.input),
+        );
+        break;
+    }
+    const profileOptions = effectiveMaxPosts === options.maxPostsPerProfile
+        ? options
+        : { ...options, maxPostsPerProfile: effectiveMaxPosts };
+    if (effectiveMaxPosts < options.maxPostsPerProfile) budgetLimited = true;
+
     await Actor.setStatusMessage(`Profile ${targetIndex + 1}/${selectedTargets.length}: ${target.input}`);
     const countryAttempts = [];
     const countries = proxyCountryCandidates(options.proxyCountry, options.fallbackProxyCountries);
@@ -652,18 +694,36 @@ for (const [targetIndex, target] of selectedTargets.entries()) {
             countryCode,
         });
         try {
-            const feed = await collectProfileFeed(target, proxyConfiguration, options);
-            const rows = await normalizeAndExpand(feed, proxyConfiguration, options);
-            countryAttempts.push({ countryCode, status: 'succeeded' });
-            for (let offset = 0; offset < rows.length; offset += 100) {
-                await Actor.pushData(rows.slice(offset, offset + 100));
+            const feed = await collectProfileFeed(target, proxyConfiguration, profileOptions);
+            if (effectiveMaxPosts < options.maxPostsPerProfile) {
+                feed.stopReason = 'charge_limit';
+                feed.coverageStatus = 'partial_charge_limit';
+                feed.warnings.push(
+                    `Result collection was capped at ${effectiveMaxPosts} posts by the user's maximum run charge.`,
+                );
             }
-            totalRows += rows.length;
+            const rows = await normalizeAndExpand(feed, proxyConfiguration, profileOptions);
+            countryAttempts.push({ countryCode, status: 'succeeded' });
+            const pushOutcome = await pushRowsWithinChargeLimit(rows, chargeBudget);
+            const publishedRows = rows.slice(0, pushOutcome.pushedRows);
+            if (publishedRows.length < rows.length) {
+                budgetLimited = true;
+                feed.stopReason = 'charge_limit';
+                feed.coverageStatus = 'partial_charge_limit';
+                feed.warnings.push(
+                    `Only ${publishedRows.length} of ${rows.length} collected posts fit within the user's maximum run charge.`,
+                );
+                for (const row of publishedRows) row.coverage_status = 'partial_charge_limit';
+            }
+            chargeLimitReached ||= pushOutcome.limitReached;
+            totalRows += publishedRows.length;
             profileSummaries.push({
                 status: feed.coverageStatus.startsWith('partial_') ? 'partial' : 'succeeded',
                 input: target.input,
                 profile: feed.profile,
-                postsReturned: rows.length,
+                requestedMaxPosts: options.maxPostsPerProfile,
+                effectiveMaxPosts,
+                postsReturned: publishedRows.length,
                 pagesRead: feed.pages,
                 stopReason: feed.stopReason,
                 coverageStatus: feed.coverageStatus,
@@ -677,10 +737,10 @@ for (const [targetIndex, target] of selectedTargets.entries()) {
                 },
                 unavailablePostsSkipped: feed.unavailablePostsSkipped,
                 media: {
-                    postsWithPhotos: rows.filter((row) => row.media_final_count > 0).length,
-                    finalPhotoUrls: rows.reduce((sum, row) => sum + row.media_final_count, 0),
-                    expansionAttempted: rows.filter((row) => row.media_expansion?.attempted).length,
-                    highReviewRisk: rows.filter((row) => row.media_review_severity === 'high').length,
+                    postsWithPhotos: publishedRows.filter((row) => row.media_final_count > 0).length,
+                    finalPhotoUrls: publishedRows.reduce((sum, row) => sum + row.media_final_count, 0),
+                    expansionAttempted: publishedRows.filter((row) => row.media_expansion?.attempted).length,
+                    highReviewRisk: publishedRows.filter((row) => row.media_review_severity === 'high').length,
                 },
                 warnings: feed.warnings,
                 diagnostics: options.debug ? feed.diagnostics : undefined,
@@ -715,6 +775,13 @@ for (const [targetIndex, target] of selectedTargets.entries()) {
             diagnostics: options.debug ? error?.details : undefined,
         });
     }
+    if (chargeLimitReached && targetIndex < selectedTargets.length - 1) {
+        budgetLimited = true;
+        skippedProfilesByChargeLimit.push(
+            ...selectedTargets.slice(targetIndex + 1).map((remainingTarget) => remainingTarget.input),
+        );
+        break;
+    }
 }
 
 const finishedAt = new Date();
@@ -728,8 +795,9 @@ const summary = {
     finishedAt: finishedAt.toISOString(),
     durationSeconds: Number(((finishedAt - startedAt) / 1000).toFixed(3)),
     requestedProfiles: targets.length,
-    processedProfiles: selectedTargets.length,
+    processedProfiles: profileSummaries.length,
     skippedProfilesByLimit: skippedTargets.map((target) => target.input),
+    skippedProfilesByChargeLimit,
     succeededProfiles,
     partialProfiles,
     failedProfiles,
@@ -742,9 +810,19 @@ const summary = {
         },
     },
     profiles: profileSummaries,
-    health: failedProfiles === selectedTargets.length
-        ? 'failed'
-        : (failedProfiles || partialProfiles ? 'partial' : 'healthy'),
+    charging: {
+        pricingModel: chargeBudget.pricingModel,
+        resultEventEnabled: chargeBudget.resultEventEnabled,
+        perResultPriceUsd: chargeBudget.perResultPriceUsd,
+        maxTotalChargeUsd: chargeBudget.maxTotalChargeUsd,
+        chargeLimitReached,
+        budgetLimited,
+    },
+    health: profileSummaries.length === 0
+        ? (budgetLimited || chargeLimitReached ? 'partial' : 'failed')
+        : (failedProfiles === profileSummaries.length
+            ? 'failed'
+            : (failedProfiles || partialProfiles || budgetLimited ? 'partial' : 'healthy')),
 };
 
 await Actor.setValue('SUMMARY', summary);
