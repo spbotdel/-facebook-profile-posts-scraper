@@ -1,0 +1,172 @@
+{
+  "title": "Facebook Profile Posts & All Photos Scraper",
+  "description": "Scrape posts exposed on public Facebook personal profiles without supplying Facebook cookies or login credentials. Each dataset result is one post with direct or nested text, Facebook publish time, stable identifiers, author data, engagement when available, and all recoverable photo URLs, including hidden +N albums. Supports newest-post monitoring, multi-profile isolation, and resumable historical backfill. Private, friends-only, Pages, Groups, Marketplace, and login-only content are not accessed.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "profileUrls": {
+      "title": "Public Facebook profile URLs",
+      "type": "array",
+      "description": "Required. Public Facebook personal-profile URLs, vanity handles, numeric IDs, profile.php?id=... URLs, or /people/.../<id> URLs. Do not enter Pages, Groups, Marketplace listings, or direct post URLs.",
+      "editor": "stringList",
+      "sectionCaption": "Profiles and post volume",
+      "prefill": [
+        "https://www.facebook.com/zuck"
+      ],
+      "items": {
+        "type": "string"
+      }
+    },
+    "maxProfilesPerRun": {
+      "title": "Max profiles per run",
+      "type": "integer",
+      "description": "Maximum number of profile targets processed independently in one run. Extra profileUrls are skipped and reported in SUMMARY.",
+      "editor": "number",
+      "unit": "profiles",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 20
+    },
+    "maxPostsPerProfile": {
+      "title": "Max posts per profile",
+      "type": "integer",
+      "description": "Maximum public post results returned for each profile. Use a small number for first tests or daily monitoring. For deeper history, request up to 1,000 posts, then continue with SUMMARY.profiles[].pointer.nextCursor.",
+      "editor": "number",
+      "unit": "posts",
+      "default": 20,
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "expandAllPhotos": {
+      "title": "Expand all photos",
+      "type": "boolean",
+      "description": "Recover public photo URLs hidden behind Facebook +N album grids. Keep enabled for photo-complete datasets; disable only for a faster preview-only run.",
+      "editor": "checkbox",
+      "default": true,
+      "sectionCaption": "Photos and newest-post behavior"
+    },
+    "omitPinnedPosts": {
+      "title": "Omit pinned posts",
+      "type": "boolean",
+      "description": "Exclude pinned older posts from the profile header feed so latest-post and scheduled monitoring runs stay predictable.",
+      "editor": "checkbox",
+      "default": true
+    },
+    "sinceDate": {
+      "title": "Since date",
+      "type": "string",
+      "description": "Optional monitoring boundary. Starting from the profile head, stop after reaching posts older than this date. Use an ISO date or timestamp.",
+      "editor": "datepicker",
+      "sectionCaption": "Incremental monitoring"
+    },
+    "knownPostIds": {
+      "title": "Known post IDs",
+      "type": "array",
+      "description": "Post IDs already stored by your pipeline. The Actor starts from the newest visible posts and stops before the first matching ID. Best for scheduled monitoring without old duplicates.",
+      "editor": "stringList",
+      "sectionCaption": "Incremental monitoring",
+      "items": {
+        "type": "string"
+      }
+    },
+    "startCursor": {
+      "title": "Start cursor",
+      "type": "string",
+      "description": "Cursor from SUMMARY.pointer.nextCursor for a one-profile older-post backfill. Do not use yesterday's cursor to look for newer posts or reuse one profile's cursor for another profile.",
+      "editor": "textarea",
+      "sectionCaption": "Historical backfill"
+    },
+    "includeRawPayload": {
+      "title": "Include raw payload",
+      "type": "boolean",
+      "description": "Include the parsed Facebook post payload in each result. Enable only for debugging or schema research because output becomes much larger.",
+      "editor": "checkbox",
+      "default": false,
+      "sectionCaption": "Advanced controls"
+    },
+    "includeUnavailablePosts": {
+      "title": "Include unavailable timeline cards",
+      "type": "boolean",
+      "description": "Return timeline cards whose shared or attached Facebook content has been deleted or access-restricted. Disabled by default so empty unavailable cards do not count toward the requested post total.",
+      "editor": "checkbox",
+      "default": false,
+      "sectionCaption": "Advanced controls"
+    },
+    "bootstrapRetries": {
+      "title": "Bootstrap retries",
+      "type": "integer",
+      "description": "Fresh proxy/session attempts for profile resolution and bootstrap failures.",
+      "editor": "number",
+      "default": 4,
+      "minimum": 1,
+      "maximum": 10,
+      "sectionCaption": "Advanced controls"
+    },
+    "graphqlPageRetries": {
+      "title": "GraphQL page retries",
+      "type": "integer",
+      "description": "Retries for transient empty, rate-limited, or failed timeline pages.",
+      "editor": "number",
+      "default": 4,
+      "minimum": 0,
+      "maximum": 5,
+      "sectionCaption": "Advanced controls"
+    },
+    "proxyCountry": {
+      "title": "Proxy country",
+      "type": "string",
+      "description": "Two-letter country code for Apify residential proxy sessions.",
+      "editor": "textfield",
+      "default": "US",
+      "sectionCaption": "Advanced controls"
+    },
+    "fallbackProxyCountries": {
+      "title": "Rate-limit fallback countries",
+      "type": "array",
+      "description": "Up to three residential proxy countries tried only when Facebook temporarily rate-limits or rejects a profile in the primary country.",
+      "editor": "stringList",
+      "default": [
+        "DE",
+        "GB",
+        "NL"
+      ],
+      "maxItems": 3,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z]{2}$"
+      },
+      "sectionCaption": "Advanced controls"
+    },
+    "mediaExpansionConcurrency": {
+      "title": "Photo expansion concurrency",
+      "type": "integer",
+      "description": "Number of posts whose public photo sets can be expanded in parallel.",
+      "editor": "number",
+      "default": 3,
+      "minimum": 1,
+      "maximum": 8,
+      "sectionCaption": "Advanced controls"
+    },
+    "mediaSetRetries": {
+      "title": "Photo-set retries",
+      "type": "integer",
+      "description": "Retry count for each Facebook media/set or permalink expansion request.",
+      "editor": "number",
+      "default": 1,
+      "minimum": 0,
+      "maximum": 5,
+      "sectionCaption": "Advanced controls"
+    },
+    "debug": {
+      "title": "Debug output",
+      "type": "boolean",
+      "description": "Add discovery and response diagnostics to SUMMARY.",
+      "editor": "checkbox",
+      "default": false,
+      "sectionCaption": "Advanced controls"
+    }
+  },
+  "required": [
+    "profileUrls"
+  ]
+}
