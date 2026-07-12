@@ -1,7 +1,7 @@
 {
   "name": "facebook-profile-posts-all-photos-scraper",
   "version": "1.0.0",
-  "description": "Apify Actor for public Facebook profile posts with all recoverable photo URLs, timestamps, authors, engagement, and cursor checkpoints.",
+  "description": "Apify Actor for public Facebook personal-profile posts with agent-ready JSON, all recoverable photos, monitoring boundaries, and cursor backfills.",
   "type": "module",
   "main": "src/main.js",
   "scripts": {

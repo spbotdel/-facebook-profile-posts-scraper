@@ -1,14 +1,15 @@
 {
   "title": "Facebook Profile Posts & All Photos Scraper",
-  "description": "Scrape posts exposed on public Facebook personal profiles without supplying Facebook cookies or login credentials. Each result contains post text, Facebook publish time, author, stable identifiers, engagement when available, and all recoverable photo URLs. Private, friends-only, and login-only content is not accessed.",
+  "description": "Scrape posts exposed on public Facebook personal profiles without supplying Facebook cookies or login credentials. Each dataset result is one post with direct or nested text, Facebook publish time, stable identifiers, author data, engagement when available, and all recoverable photo URLs, including hidden +N albums. Supports newest-post monitoring, multi-profile isolation, and resumable historical backfill. Private, friends-only, Pages, Groups, Marketplace, and login-only content are not accessed.",
   "type": "object",
   "schemaVersion": 1,
   "properties": {
     "profileUrls": {
       "title": "Public Facebook profile URLs",
       "type": "array",
-      "description": "Public personal profile URLs, handles, numeric profile IDs, profile.php URLs, or people/... URLs. Groups, Marketplace listings, and direct post URLs are not profile targets.",
+      "description": "Required. Public Facebook personal-profile URLs, vanity handles, numeric IDs, profile.php?id=... URLs, or /people/.../<id> URLs. Do not enter Pages, Groups, Marketplace listings, or direct post URLs.",
       "editor": "stringList",
+      "sectionCaption": "Profiles and post volume",
       "prefill": [
         "https://www.facebook.com/zuck"
       ],
@@ -19,7 +20,7 @@
     "maxProfilesPerRun": {
       "title": "Max profiles per run",
       "type": "integer",
-      "description": "Maximum number of profile targets processed independently in one run.",
+      "description": "Maximum number of profile targets processed independently in one run. Extra profileUrls are skipped and reported in SUMMARY.",
       "editor": "number",
       "unit": "profiles",
       "default": 10,
@@ -29,7 +30,7 @@
     "maxPostsPerProfile": {
       "title": "Max posts per profile",
       "type": "integer",
-      "description": "Maximum public post results returned for each profile. A smaller number is recommended for first tests and daily monitoring.",
+      "description": "Maximum public post results returned for each profile. Use a small number for first tests or daily monitoring. For deeper history, request up to 1,000 posts, then continue with SUMMARY.profiles[].pointer.nextCursor.",
       "editor": "number",
       "unit": "posts",
       "default": 20,
@@ -39,28 +40,29 @@
     "expandAllPhotos": {
       "title": "Expand all photos",
       "type": "boolean",
-      "description": "Recover photo URLs hidden behind Facebook +N album grids when publicly available.",
+      "description": "Recover public photo URLs hidden behind Facebook +N album grids. Keep enabled for photo-complete datasets; disable only for a faster preview-only run.",
       "editor": "checkbox",
-      "default": true
+      "default": true,
+      "sectionCaption": "Photos and newest-post behavior"
     },
     "omitPinnedPosts": {
       "title": "Omit pinned posts",
       "type": "boolean",
-      "description": "Exclude a pinned older post from the profile header feed so newest-first monitoring stays predictable.",
+      "description": "Exclude pinned older posts from the profile header feed so latest-post and scheduled monitoring runs stay predictable.",
       "editor": "checkbox",
       "default": true
     },
     "sinceDate": {
       "title": "Since date",
       "type": "string",
-      "description": "Optional monitoring boundary. Stop after the feed reaches posts older than this date.",
+      "description": "Optional monitoring boundary. Starting from the profile head, stop after reaching posts older than this date. Use an ISO date or timestamp.",
       "editor": "datepicker",
       "sectionCaption": "Incremental monitoring"
     },
     "knownPostIds": {
       "title": "Known post IDs",
       "type": "array",
-      "description": "Post IDs already stored by your pipeline. The Actor starts from the newest posts and stops when one is reached.",
+      "description": "Post IDs already stored by your pipeline. The Actor starts from the newest visible posts and stops before the first matching ID. Best for scheduled monitoring without old duplicates.",
       "editor": "stringList",
       "sectionCaption": "Incremental monitoring",
       "items": {
@@ -77,7 +79,7 @@
     "includeRawPayload": {
       "title": "Include raw payload",
       "type": "boolean",
-      "description": "Include the parsed Facebook post payload in each result. Useful for debugging and much larger than normal output.",
+      "description": "Include the parsed Facebook post payload in each result. Enable only for debugging or schema research because output becomes much larger.",
       "editor": "checkbox",
       "default": false,
       "sectionCaption": "Advanced controls"
