@@ -2,7 +2,7 @@
   "actorSpecification": 1,
   "name": "facebook-profile-posts-all-photos-scraper",
   "title": "Facebook Profile Posts & All Photos Scraper",
-  "description": "Scrape public Facebook personal-profile posts as agent-ready JSON with text, publish time, stable URLs, engagement, and all recoverable photos hidden behind +N albums.",
+  "description": "Scrape latest or historical posts from public Facebook personal profiles as agent-ready JSON with publication dates, stable URLs, nested text, engagement, and all recoverable photos hidden behind +N albums. Built for API, MCP, monitoring, and resumable backfills.",
   "version": "1.0",
   "defaultMemoryMbytes": 1024,
   "minMemoryMbytes": 512,

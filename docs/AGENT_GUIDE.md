@@ -11,6 +11,7 @@ Apify Actor: spbotdel/facebook-profile-posts-all-photos-scraper
 Actor ID: dh91XwP7wQscfKkxU
 Result grain: one public Facebook profile post per dataset row
 Primary event: one accessible public profile post
+MCP URL: https://mcp.apify.com?tools=spbotdel/facebook-profile-posts-all-photos-scraper
 ```
 
 ## Choose this Actor when the user asks for
@@ -111,4 +112,3 @@ After a run, report:
 - next cursor only when the user is backfilling older history.
 
 Do not describe a run as complete merely because the Actor process succeeded. Process success and data coverage are different things, because software eventually invents bureaucracy even without a government.
-

@@ -3,6 +3,7 @@
 Apify Actor: https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper
 Actor ID: dh91XwP7wQscfKkxU
 GitHub: https://github.com/spbotdel/-facebook-profile-posts-scraper
+MCP: https://mcp.apify.com?tools=spbotdel/facebook-profile-posts-all-photos-scraper
 
 ## What this tool does
 
@@ -72,5 +73,7 @@ For older posts, run one profile with up to 1,000 posts, read `SUMMARY.profiles[
 - One result equals one public profile post, not one photo and not one run.
 - Photo URLs are included in the post result.
 - Read SUMMARY before claiming complete coverage.
+- Check every profile's coverage status and retry only partial targets.
+- Review unsatisfied declared photo counts and medium/high media warnings.
 - Preserve healthy profile results when another profile fails.
 - Do not invent missing Facebook fields.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1 - 2026-07-14
+
+- Rebuilt the Store README around user intent, measured validation, all-photo recovery, monitoring, historical backfills, pricing, and troubleshooting.
+- Added an explicit AI-agent selection contract, hosted Apify MCP configuration, natural-language prompts, and mandatory post-run coverage checks.
+- Clarified one-post-per-result pricing, nested/shared-card text recovery, Facebook publication timestamps, media completeness evidence, and public-profile boundaries.
+- Improved Actor and input-schema descriptions for Store and MCP discovery without changing collection behavior.
+
 ## 1.0.0 - 2026-07-11
 
 - Promoted the validated public-profile feed and all-photo recovery pipeline to the first production release.

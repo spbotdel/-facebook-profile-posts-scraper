@@ -1,6 +1,6 @@
 {
   "title": "Facebook Profile Posts & All Photos Scraper",
-  "description": "Scrape posts exposed on public Facebook personal profiles without supplying Facebook cookies or login credentials. Each dataset result is one post with direct or nested text, Facebook publish time, stable identifiers, author data, engagement when available, and all recoverable photo URLs, including hidden +N albums. Supports newest-post monitoring, multi-profile isolation, and resumable historical backfill. Private, friends-only, Pages, Groups, Marketplace, and login-only content are not accessed.",
+  "description": "Collect latest or historical posts exposed on public Facebook personal profiles without supplying Facebook cookies or login credentials. Each dataset result is one post with direct or nested text, Facebook publication time, stable identifiers, author data, engagement when available, and all recoverable photo URLs, including hidden +N albums. Supports agent-ready API/MCP output, newest-post monitoring, per-profile isolation, and resumable historical backfills. Private, friends-only, Pages, Groups, Marketplace, and login-only content are not accessed.",
   "type": "object",
   "schemaVersion": 1,
   "properties": {

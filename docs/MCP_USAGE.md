@@ -10,6 +10,22 @@ Actor ID: dh91XwP7wQscfKkxU
 Store URL: https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper
 ```
 
+## Connect through the hosted Apify MCP server
+
+Use a tool-scoped MCP URL so an agent sees this Actor directly instead of searching the full Store:
+
+```json
+{
+  "mcpServers": {
+    "apify": {
+      "url": "https://mcp.apify.com?tools=spbotdel/facebook-profile-posts-all-photos-scraper"
+    }
+  }
+}
+```
+
+Authenticate through the MCP client's Apify OAuth flow when prompted, or configure the server with an Apify token where the client supports header-based authentication.
+
 ## Natural-language MCP prompts
 
 Use prompts that identify the Facebook surface, volume, ordering, and desired fields:
@@ -58,6 +74,17 @@ curl "https://api.apify.com/v2/key-value-stores/STORE_ID/records/SUMMARY"
 ```
 
 An agent should read both. Dataset rows contain posts; `SUMMARY` contains evidence about coverage, retries, charge boundaries, and the next older-history cursor.
+
+## Required post-run validation
+
+An agent must not treat `SUCCEEDED` as proof that every requested profile was fully covered. After each run:
+
+1. Read the default dataset and the `SUMMARY` key-value-store record.
+2. Check every `SUMMARY.profiles[].coverageStatus` and its stop reason.
+3. Preserve healthy profile rows when another profile is partial; retry only the affected profile.
+4. Review rows where `media_declared_count_satisfied=false`, `media_plus_n_risk=true`, or `media_review_severity` is `medium` or `high`.
+5. Persist `source_post_id` values for future monitoring, or `pointer.nextCursor` only for an older-history backfill.
+6. Report partial coverage honestly. A green process badge is not a notarized statement from Facebook, despite the interface's optimism.
 
 ## Node.js client
 
@@ -108,4 +135,3 @@ Persist these values outside the Actor:
 - the last `SUMMARY` for operational audit.
 
 For new posts, start from the profile head every time. For old posts, continue with the cursor. Reversing those two is how a crawler becomes an archaeology department by accident.
-

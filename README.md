@@ -2,140 +2,100 @@
 
 [![Run on Apify](https://img.shields.io/badge/Run%20on-Apify-2f7df6)](https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper)
 [![Source on GitHub](https://img.shields.io/badge/source-GitHub-24292f)](https://github.com/spbotdel/-facebook-profile-posts-scraper)
+[![AI agents](https://img.shields.io/badge/AI%20agents-MCP%20ready-6f42c1)](https://docs.apify.com/integrations/mcp)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-Scrape posts from **public Facebook personal profiles** as clean, agent-ready JSON. Get post text, Facebook publication timestamps, authors, stable post URLs and IDs, engagement counters, video metadata when exposed, and **all recoverable photo URLs**, including photos hidden behind Facebook `+N` album grids.
+Scrape **latest or historical posts from public Facebook personal profiles** into clean, agent-ready JSON. Get post text, Facebook publication timestamps, stable post IDs and URLs, authors, engagement counters, best-effort video metadata, and **all recoverable photo URLs**, including photos hidden behind Facebook `+N` album grids.
 
-Use this Facebook profile posts scraper when a preview-only result is not enough. Each dataset item is one public profile post, and recovered photo URLs stay in that same result. No Facebook cookies, credentials, or browser session are required.
+> **One paid result = one public Facebook profile post.** Expanded photo URLs are included in the same dataset row and the same per-post price. No Facebook account, cookies, credentials, or browser session are required from the user.
 
-**Links:** [Run on Apify](https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper) · [Source on GitHub](https://github.com/spbotdel/-facebook-profile-posts-scraper) · [Agent guide](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/AGENT_GUIDE.md) · [LLM card](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/llms.txt) · [MCP/API usage](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/MCP_USAGE.md) · [Output contract](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/OUTPUT_CONTRACT.md) · [Operations](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/OPERATIONS.md)
-
-## ⚡ Facebook profile scraper at a glance
-
-| Feature | Supported |
+| Best for | Not designed for |
 | --- | --- |
-| Public Facebook personal profiles | ✅ Yes |
-| Vanity handles and numeric profile IDs | ✅ Yes |
-| `profile.php?id=...` and `/people/.../<id>` URLs | ✅ Yes |
-| Newest public posts first | ✅ Yes |
-| Pinned-post omission | ✅ Enabled by default |
-| Stable post IDs and URLs | ✅ When Facebook exposes them |
-| Facebook publication timestamps | ✅ From GraphQL creation metadata |
-| Direct post text | ✅ Yes |
-| Nested / shared attachment text | ✅ Fallback extraction included |
-| Author ID, name, and profile URL | ✅ When available |
-| Engagement counters | ✅ When available |
-| Feed preview photos | ✅ Yes |
-| Hidden `+N` photo grids | ✅ Recovery attempts included |
-| Declared album-count audit | ✅ Yes |
-| Video URL metadata | ✅ Best effort; no download or transcript |
-| Incremental newest-post monitoring | ✅ `knownPostIds` and `sinceDate` |
-| Historical cursor backfill | ✅ Yes |
-| Multi-profile isolation | ✅ Yes |
-| Maximum posts per profile per run | ✅ 1,000 |
-| Deeper history | ✅ Cursor continuation |
-| Apify API / MCP / agent workflows | ✅ Yes |
-| Facebook Pages or Groups | ❌ Use a surface-specific Actor |
-| Private or login-only profiles | ❌ No |
-| Full comment threads | ❌ Counters only |
+| Public personal profiles, newest-post monitoring, historical backfills, photo-heavy posts, creator/public-figure research, AI agents, MCP, API and scheduled pipelines | Private or friends-only profiles, Facebook Pages or Groups, Marketplace, global keyword search, expanded comments, guaranteed video downloads or transcripts |
 
-## 🏆 Why choose this Facebook profile posts scraper
+**Start here:** [Run the Actor](https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper) · [Latest-post task](https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper/examples/latest-public-facebook-profile-posts) · [All-photos task](https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper/examples/facebook-profile-posts-with-all-photos) · [GitHub](https://github.com/spbotdel/-facebook-profile-posts-scraper) · [Agent guide](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/AGENT_GUIDE.md) · [Output contract](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/OUTPUT_CONTRACT.md)
 
-Many Facebook scrapers return a useful preview. The difficult parts begin after that: pinned posts distort recency, shared cards hide their text in nested structures, album posts expose only five photos, and repeated runs import yesterday's records again.
+## Table of contents
 
-This Actor is built around completeness and repeatable automation:
+- [Why this Actor](#why-this-actor)
+- [Quick start](#quick-start)
+- [What data you get](#what-data-you-get)
+- [How all-photo recovery works](#how-all-photo-recovery-works)
+- [Run recipes](#run-recipes)
+- [AI agents and MCP](#ai-agents-and-mcp)
+- [API and integrations](#api-and-integrations)
+- [Reliability and troubleshooting](#reliability-and-troubleshooting)
+- [Pricing](#pricing)
+- [FAQ](#faq)
+- [Limitations and responsible use](#limitations-and-responsible-use)
+- [Support and related tools](#support-and-related-tools)
 
-| Problem | Generic profile scrapers | This Actor |
+## Why this Actor
+
+### The profile-timeline problem
+
+A public Facebook profile is not a clean chronological API. Pinned posts can look recent, shared cards can hide their useful text in nested structures, deleted attachments can consume result slots, and photo albums often expose five previews plus a `+N` overlay while keeping the rest behind a separate media set.
+
+This Actor treats those details as part of the product:
+
+1. Resolve the public personal-profile timeline and start from its newest visible posts.
+2. Omit pinned older posts by default.
+3. Recover direct or nested/shared-card text.
+4. Detect media-set tokens and declared album counts.
+5. Expand recoverable photo sets and retry suspicious rows.
+6. Expose coverage and media-quality evidence instead of calling every incomplete response a triumph.
+
+### Feature comparison
+
+| Capability | Basic profile-post extraction | This Actor |
 | --- | --- | --- |
-| A post shows 5 photos and `+14` | Often returns the visible preview | Expands public media sets and audits the final count |
-| Shared or attachment-style post | Main text can be empty | Scores direct and nested text candidates |
-| Daily monitoring | Re-scrapes old history | Starts at the profile head and stops at a known ID or date |
-| Pinned old post | Can appear as a false "latest" post | Omitted by default |
-| Historical extraction | Pagination state is opaque | Exposes `SUMMARY.pointer.nextCursor` |
-| One profile fails in a batch | Whole run may fail | Healthy profiles keep their rows and diagnostics |
-| Agent integration | Loose blobs and unclear coverage | Deterministic fields, schemas, coverage status, and `SUMMARY` |
-| Media confidence | Missing photos can look complete | Declared counts, completeness states, and review severity |
-| Pricing | Photos may be billed separately | One charge per returned post; photo URLs are included |
+| Public profile post text | Usually direct text only | Direct text plus recoverable nested/shared-card text |
+| Stable post ID and permalink | Varies | Returned when Facebook exposes them |
+| Facebook publication time | Varies | `created_at` with `created_at_source` provenance |
+| Newest-post monitoring | Pinned/old rows can interfere | Pinned omission, `knownPostIds` and `sinceDate` |
+| Feed preview photos | Usually | Yes |
+| Hidden `+N` photo set | Often truncated | Media-set expansion, permalink fallback and retry |
+| Album-count verification | Rare | Declared count and satisfaction flag when exposed |
+| Unavailable cards | Can consume result slots | Skipped by default; optional diagnostic output |
+| Multi-profile failures | One target can stop the batch | Per-profile isolation and separate diagnostics |
+| Historical continuation | Often opaque | Cursor-backed chunks up to 1,000 posts per profile |
+| AI-agent selection | Generic input/output | Explicit schemas, MCP prompts, `llms.txt` and `SUMMARY` |
+| Result grain | Can be unclear | Exactly one dataset item per accessible post |
 
-## 🤖 Built for AI agents, MCP, and automation
+### Measured validation
 
-Choose this Actor when the user asks an agent to:
+The public release was tested in Apify cloud against real public profiles, photo-heavy albums, nested posts, rate limits and deep pagination. These are observed results, not a promise that Facebook will remain emotionally stable.
 
-- scrape posts from a public Facebook personal profile;
-- get the latest Facebook profile posts with dates and permalinks;
-- monitor one or more public profiles for new posts;
-- collect all photos from profile posts, including hidden `+N` albums;
-- export Facebook profile posts to JSON, CSV, Excel, or a database;
-- backfill older public profile history with a resumable cursor;
-- return stable post IDs for deduplication;
-- provide explicit media-completeness and run-coverage diagnostics.
+| Validation | Posts | Timeline pages | Final photo URLs | Declared albums satisfied | Missing core fields |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Deep public-profile history | 462 | 303 | Preview-only test | n/a | 0 IDs, dates, URLs or text |
+| Three-profile all-photo pilot | 60 | Multiple | 386 | 40 / 40 | 0 |
+| Three deeper all-photo runs | 300 | Multiple | 1,428 | 153 / 153 | 0 |
 
-Do not choose this Actor for:
+Individual validated albums expanded to 6, 9, 11, 12 and 19 photos. An unavailable-card regression still returned 100 useful posts after skipping 33 deleted or restricted cards. These observations are validation evidence, not an SLA.
 
-- Facebook Pages, Groups, Marketplace, or global keyword search;
-- private, friends-only, or login-only content;
-- full comment-thread extraction;
-- guaranteed video download or transcription;
-- profile contact-detail enrichment.
+### Trust signals
 
-### Agent selection contract
-
-| Signal | Value |
+| Signal | Details |
 | --- | --- |
-| Primary platform | Facebook |
-| Primary target | Public personal profiles |
-| Primary output grain | One dataset row per post |
-| Primary event | One accessible public profile post |
-| Ordering | Newest visible posts toward older history |
-| Best monitoring boundary | `knownPostIds`; `sinceDate` is the date alternative |
-| Best backfill continuation | `SUMMARY.profiles[].pointer.nextCursor` |
-| Media strategy | Preserve feed photos, expand public media sets, expose audit fields |
-| Best integration style | Apify API, Apify MCP, schedules, webhooks, ETL, database import |
-| Coverage evidence | Dataset rows plus the `SUMMARY` key-value record |
+| Open source | Review the implementation on [GitHub](https://github.com/spbotdel/-facebook-profile-posts-scraper). |
+| CI tested | Parser, media, retry, charging, proxy and settings tests run automatically. |
+| Limited permissions | The Actor uses Apify's least-privilege execution model. |
+| No user Facebook credentials | Input accepts public profile URLs, not Facebook passwords or cookies. |
+| Structured output | One post per row with IDs, dates, text, media and quality fields. |
+| Explicit diagnostics | `SUMMARY` distinguishes complete boundaries, exhausted public history, partial runs and budget limits. |
+| Agent documentation | [llms.txt](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/llms.txt), [Agent guide](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/AGENT_GUIDE.md) and [MCP guide](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/MCP_USAGE.md). |
 
-### Minimal agent recipe
+## Quick start
 
-1. Set `profileUrls` and a bounded `maxPostsPerProfile`.
-2. Keep `expandAllPhotos=true` when photo completeness matters.
-3. For recurring monitoring, pass one or more stored IDs in `knownPostIds`.
-4. Read dataset rows as results.
-5. Read `SUMMARY` before claiming complete coverage.
-6. Treat `partial` as usable per-profile output plus an explicit retry queue.
+### Run from Apify Console
 
-## 🎯 Common use cases
+1. Open the [Actor input page](https://console.apify.com/actors/dh91XwP7wQscfKkxU/input).
+2. Paste one or more public Facebook personal-profile URLs.
+3. Keep **Expand all photos** and **Omit pinned posts** enabled.
+4. Set the number of posts per profile and click **Start**.
 
-| Use case | Why it fits |
-| --- | --- |
-| Public-profile monitoring | Run on a schedule and stop when a known post ID is reached. |
-| Creator and public-figure research | Collect dated posts, permalinks, text, and public media. |
-| Photo-complete datasets | Recover photos hidden behind `+N` grids instead of accepting previews. |
-| Social listening | Track public profile communication with stable IDs and timestamps. |
-| Content archiving | Backfill older public posts in resumable cursor chunks. |
-| AI enrichment | Feed normalized rows into translation, classification, entity extraction, or summarization. |
-| Analytics and reporting | Export JSON, CSV, XML, RSS, or Excel from the Apify Dataset. |
-| Multi-profile ETL | Process profiles independently and preserve healthy results when one target fails. |
-
-## 💰 Predictable pay-per-result pricing
-
-The base Store price is **$4.99 per 1,000 returned Facebook profile posts**. Platform usage is included, so buyers do not receive a second compute or proxy bill from this Actor.
-
-| Included in one post result | Included |
-| --- | --- |
-| Post text and text-source metadata | ✅ |
-| Facebook publication timestamp | ✅ when exposed |
-| Stable post and profile identifiers | ✅ when exposed |
-| Author data and engagement counters | ✅ when available |
-| Feed preview photos | ✅ |
-| Expanded `+N` album photo URLs | ✅ |
-| Media completeness and coverage diagnostics | ✅ |
-
-You are charged per returned post, **not per photo URL**. Apify's small synthetic Actor-start event is displayed separately.
-
-When a caller sets `maximum cost per run`, the Actor reduces collection before expensive feed and album work. A budget-bounded run reports `partial_charge_limit` in `SUMMARY` instead of silently claiming full coverage.
-
-## 🚀 Quick start
-
-Paste one or more public personal-profile URLs into `profileUrls`:
+Minimal input:
 
 ```json
 {
@@ -148,78 +108,60 @@ Paste one or more public personal-profile URLs into `profileUrls`:
 }
 ```
 
-Accepted targets include:
+Each default-dataset item is one profile post. After the run, also read the `SUMMARY` record from the default key-value store for per-profile coverage, media totals, warnings, charging boundaries and continuation cursors.
 
-- `https://www.facebook.com/username`
-- `https://www.facebook.com/profile.php?id=100000000000000`
-- `https://www.facebook.com/people/Name/100000000000000/`
-- a numeric public profile ID
+### Supported profile URL formats
 
-Facebook Groups, Pages, Marketplace listings, and direct post URLs are different surfaces and are not accepted as profile targets.
+```text
+https://www.facebook.com/username
+https://www.facebook.com/profile.php?id=100000000000000
+https://www.facebook.com/people/Name/100000000000000/
+100000000000000
+```
 
-## 🧭 Recommended run patterns
+Use a public personal-profile URL, handle or numeric ID. Do not submit a Page, Group, Marketplace listing or direct post URL.
 
-| Goal | Recommended settings |
-| --- | --- |
-| Quick test | `maxPostsPerProfile=10`, `expandAllPhotos=true` |
-| Latest public posts | `omitPinnedPosts=true`, no `startCursor` |
-| Daily monitoring | Add `knownPostIds` or `sinceDate` |
-| Photo-complete result | Keep `expandAllPhotos=true` |
-| Faster preview-only result | Set `expandAllPhotos=false` |
-| Historical backfill | One profile, up to 1,000 posts, then continue with `nextCursor` |
-| Several profiles | Up to 20 targets; each target is isolated |
-| Forensic unavailable-card audit | Set `includeUnavailablePosts=true` |
-
-## 🧩 Input fields
-
-| Field | Description |
-| --- | --- |
-| `profileUrls` | Public personal-profile URLs, handles, or numeric profile IDs. |
-| `maxProfilesPerRun` | Safety cap for independently processed profiles. Maximum `20`. |
-| `maxPostsPerProfile` | Maximum returned posts for each profile. Maximum `1,000` per run. |
-| `expandAllPhotos` | Recover public photos hidden behind `+N` album grids. |
-| `omitPinnedPosts` | Exclude pinned older posts from newest-post monitoring. |
-| `knownPostIds` | Stop before a post already stored by your pipeline. |
-| `sinceDate` | Stop after reaching posts older than this date. |
-| `startCursor` | Continue toward older history for one profile. |
-| `includeRawPayload` | Include parsed Facebook payloads for debugging; output becomes much larger. |
-| `includeUnavailablePosts` | Return deleted/restricted attachment cards as diagnostic rows. |
-| `fallbackProxyCountries` | Bounded geo fallback for transient profile-level rate limits. |
-| `mediaExpansionConcurrency` | Number of photo sets expanded in parallel. Default `3` is the stable setting. |
-
-## 📦 Facebook profile post output
-
-Each default dataset row represents one accessible public Facebook profile post. Results can be downloaded from Apify as JSON, JSONL, CSV, XML, RSS, or Excel.
-
-| Field | Meaning |
-| --- | --- |
-| `source_profile_id` | Numeric Facebook profile ID when resolved. |
-| `source_profile_url` | Public profile URL used for the result. |
-| `source_profile_name` | Public display name. |
-| `source_post_id` | Stable Facebook post ID when exposed. |
-| `source_url` | Public post URL. |
-| `created_at` | Facebook publication time as ISO 8601, not scrape time. |
-| `created_at_source` | Timestamp provenance, normally `graphql_creation_time`. |
-| `raw_text` | Best recovered post body. |
-| `text_source` | Direct, nested-fallback, or missing-text classification. |
-| `author` | Public author ID, name, and profile URL when available. |
-| `stats` | Reactions, comments, and shares when exposed. |
-| `media` | Final recovered photo objects. |
-| `video_urls` | Best-effort direct video URLs when exposed. |
-| `media_preview_count` | Photo URLs visible in the timeline payload. |
-| `media_expanded_count` | Photo URLs recovered from media-set expansion. |
-| `media_final_count` | Final photo count returned in `media`. |
-| `media_declared_count` | Album count declared by Facebook when exposed. |
-| `media_declared_count_satisfied` | Whether recovered photos meet the declared count. |
-| `media_completeness` | Media expansion outcome. |
-| `media_review_severity` | `none`, `low`, `medium`, or `high`. |
-| `coverage_status` | Evidence describing why collection stopped. |
-
-<details>
-<summary>Example JSON result</summary>
+### Multiple profiles in one run
 
 ```json
 {
+  "profileUrls": [
+    "https://www.facebook.com/lam.tp.chien.phuong",
+    "https://www.facebook.com/trang.phan.298890",
+    "https://www.facebook.com/zuck"
+  ],
+  "maxPostsPerProfile": 50,
+  "expandAllPhotos": true,
+  "omitPinnedPosts": true,
+  "mediaExpansionConcurrency": 3
+}
+```
+
+Up to 20 profiles can be processed in one run. Each profile is isolated: a temporary failure on one target does not erase healthy rows from the others. Inspect every entry in `SUMMARY.profiles[]`.
+
+## What data you get
+
+### One normalized row per post
+
+| Data | Main fields |
+| --- | --- |
+| Profile identity | `source_profile_id`, `source_profile_url`, `source_profile_name`, `source_profile_type` |
+| Post identity | `source_post_id`, `source_url`, `rank` |
+| Time | `created_at`, `created_at_source`, `created_at_precision`, `creation_time` |
+| Text | `raw_text`, `text_source`, `text_missing_reason`, `text_candidates` |
+| Author | `author.source_user_id`, `author.name`, `author.url` |
+| Engagement | `stats.reactions`, `stats.comments`, `stats.shares` when exposed |
+| Photos | `media[].source_media_id`, `source_url`, `thumbnail_url`, dimensions and source |
+| Video metadata | `video_urls[]` when direct public URLs are exposed |
+| Media audit | preview/expanded/final/declared counts, completeness, risk and review severity |
+| Run context | `coverage_status`, `warnings` |
+
+<details>
+<summary>Abridged JSON result</summary>
+
+```json
+{
+  "record_type": "post",
   "source_platform": "facebook",
   "source_profile_id": "100013987020455",
   "source_profile_url": "https://www.facebook.com/example.profile",
@@ -263,97 +205,214 @@ Each default dataset row represents one accessible public Facebook profile post.
 
 </details>
 
-## 🖼️ How all-photo recovery works
+### Run-level `SUMMARY`
 
-When `expandAllPhotos` is enabled, the Actor:
+The default key-value store receives one `SUMMARY` record. Agents and production pipelines should inspect it before accepting a run as complete.
 
-1. Keeps every valid photo URL exposed by the profile timeline.
-2. Discovers public Facebook media-set tokens.
-3. Expands media sets that may hide photos behind a `+N` grid.
-4. Uses a public permalink fallback when expansion is suspicious.
-5. Preserves a larger feed set if an expansion result is smaller.
-6. Compares recovered photos with Facebook's declared album count when available.
-7. Exposes quality fields instead of declaring uncertain rows magically perfect.
+| Field | Why it matters |
+| --- | --- |
+| `profiles[]` | Per-profile result count, attempts, stop reason, coverage and pointer. |
+| `profiles[].coverageStatus` | Explains whether the target/boundary was reached or collection became partial. |
+| `profiles[].pointer.nextCursor` | Cursor for the next older-history chunk. |
+| `outputPosts` | Total post rows written. |
+| `media` diagnostics | Final photos, declared-count satisfaction and review distribution. |
+| `charging` | Price event, maximum charge, effective limits and budget state. |
+| `skippedProfilesByChargeLimit` | Profiles not started because the caller's run budget was exhausted. |
+| `warnings` | Non-fatal conditions that deserve inspection. |
 
-Photo URLs are Facebook CDN URLs and may be tokenized or expire. Download or mirror them promptly when your lawful workflow requires durable storage.
+See the complete [output contract](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/OUTPUT_CONTRACT.md).
 
-## 🔁 Latest posts, monitoring, and historical backfill
+### Export formats
 
-### Monitor only new Facebook profile posts
+Use Apify Dataset to export results as JSON, JSONL, CSV, Excel, XML or RSS, or send them through a webhook/integration to your own database.
 
-Every monitoring run should start from the newest visible profile posts. Pass one or more post IDs already stored by your pipeline:
+## How all-photo recovery works
+
+When `expandAllPhotos=true`, media is resolved in stages:
+
+```text
+Public profile timeline
+    -> preview photos
+    -> media-set token and declared-count detection
+    -> photo-set expansion
+    -> permalink fallback for suspicious +N rows
+    -> retry and feed preservation
+    -> final media list + quality fields
+```
+
+| Field | Interpretation |
+| --- | --- |
+| `media_preview_count` | Valid photo URLs exposed in the timeline payload. |
+| `media_expanded_count` | Photos found through media-set expansion. |
+| `media_final_count` | Final deduplicated photo count returned. |
+| `media_declared_count` | Attachment count declared by Facebook when exposed. |
+| `media_declared_count_satisfied` | Whether the final count meets that declaration. |
+| `media_completeness` | Final recovery classification. |
+| `media_review_severity` | `none`, `low`, `medium` or `high`; review `medium` and `high`. |
+| `media_plus_n_risk` | `true` when evidence suggests Facebook hid more photos than were recovered. |
+
+The Actor returns source photo URLs, not binary image files. Facebook CDN URLs can expire, so download lawful media promptly when durable storage is required.
+
+## Run recipes
+
+| Goal | Recommended configuration |
+| --- | --- |
+| Small evaluation | 10-20 posts, all photos and pinned omission enabled |
+| Latest posts | Start at the profile head with no `startCursor` |
+| Daily monitoring | Start at the head and stop with `knownPostIds` or `sinceDate` |
+| Photo-complete collection | Keep `expandAllPhotos=true` and concurrency at `3` |
+| Faster preview-only test | Set `expandAllPhotos=false` |
+| Historical backfill | One profile, up to 1,000 posts, then continue with `pointer.nextCursor` |
+| Multi-profile monitoring | Up to 20 profiles; validate each entry in `SUMMARY.profiles[]` |
+| Deleted/restricted-card audit | Set `includeUnavailablePosts=true` |
+
+### Latest public posts
 
 ```json
 {
-  "profileUrls": ["https://www.facebook.com/example.profile"],
-  "maxPostsPerProfile": 100,
-  "knownPostIds": ["1234567890123456"],
+  "profileUrls": ["PROFILE_URL"],
+  "maxPostsPerProfile": 50,
   "expandAllPhotos": true,
   "omitPinnedPosts": true
 }
 ```
 
-The Actor stops before the known post and returns only newer rows. Keep a unique constraint on `source_post_id` in your database as a second deduplication layer.
+Do not pass an old `startCursor` when the goal is newest posts. A backfill cursor points toward older history.
 
-A date boundary is also supported:
+### Daily incremental monitoring
+
+Start at the newest profile posts every time and stop before a post already stored by your system:
 
 ```json
 {
-  "profileUrls": ["https://www.facebook.com/example.profile"],
-  "maxPostsPerProfile": 200,
-  "sinceDate": "2026-07-01T00:00:00Z",
+  "profileUrls": ["PROFILE_URL"],
+  "maxPostsPerProfile": 100,
+  "knownPostIds": ["LAST_STORED_POST_ID"],
+  "expandAllPhotos": true,
   "omitPinnedPosts": true
 }
 ```
 
-### Backfill older Facebook profile history
-
-Facebook profile cursors move from newer posts toward older history:
-
-1. Run one profile with up to `maxPostsPerProfile=1000`.
-2. Read `SUMMARY.profiles[0].pointer.nextCursor`.
-3. Pass it as `startCursor` in the next run.
-4. Repeat until `nextCursor` is absent or you have enough history.
+Alternative date boundary:
 
 ```json
 {
-  "profileUrls": ["https://www.facebook.com/example.profile"],
-  "maxPostsPerProfile": 1000,
-  "startCursor": "PREVIOUS_NEXT_CURSOR",
-  "expandAllPhotos": true
+  "profileUrls": ["PROFILE_URL"],
+  "maxPostsPerProfile": 200,
+  "sinceDate": "2026-07-01T00:00:00Z",
+  "expandAllPhotos": true,
+  "omitPinnedPosts": true
 }
 ```
 
-Do **not** reuse yesterday's backfill cursor to look for new posts. A cursor continues into older history; recurring monitoring starts from the profile head and stops with `knownPostIds` or `sinceDate`.
+Healthy incremental runs normally finish with `complete_until_known_post` or `complete_until_since_date`. Keep a unique constraint on `source_post_id`, with `source_url` as a fallback.
 
-For checkpointed exports through the Apify API, the repository includes `npm run backfill:profile`.
+### Historical backfill
 
-## 🩺 Coverage and operational diagnostics
+Request up to 1,000 posts from one profile in one run:
 
-The Actor writes one `SUMMARY` record to the run's default key-value store. It includes a separate outcome for every profile, requested and effective limits, pages read, posts returned, stop reason, coverage status, media counts, warnings, charging metadata, and an older-history cursor.
+```json
+{
+  "profileUrls": ["PROFILE_URL"],
+  "maxPostsPerProfile": 1000,
+  "expandAllPhotos": true,
+  "omitPinnedPosts": true,
+  "mediaExpansionConcurrency": 3
+}
+```
 
-| Coverage status | Meaning | Recommended action |
-| --- | --- | --- |
-| `complete_target_reached` | Requested result count was returned. | Use the dataset normally. |
-| `complete_until_known_post` | Monitoring reached a stored post ID. | Healthy incremental run. |
-| `complete_until_since_date` | Monitoring reached the date boundary. | Healthy incremental run. |
-| `complete_feed_exhausted` | Facebook reported no older page. | Backfill reached the public end. |
-| `no_public_posts` | No public rows were exposed. | Verify the target in a logged-out browser. |
-| `partial_no_cursor` | Rows exist, but Facebook exposed no continuation cursor. | Keep rows and retry if more coverage is required. |
-| `partial_stalled_cursor` | Facebook repeated a cursor. | Keep rows and retry with a fresh run. |
-| `partial_error` | Earlier rows survived a later page failure. | Retry only the affected profile. |
-| `partial_charge_limit` | The caller's maximum run charge reduced coverage. | Increase the budget or accept the bounded result. |
+For older history:
 
-For multi-profile runs, healthy profile rows are preserved when another profile is blocked or rate-limited. This is intentional per-profile isolation, not a half-empty success costume.
+1. Read `SUMMARY.profiles[0].pointer.nextCursor` after the first run.
+2. Pass that value as `startCursor` in the next run.
+3. Store the new cursor only after the preceding batch is accepted.
+4. Repeat until no next cursor remains or the required history is complete.
 
-## 🔌 Apify API and MCP usage
+```json
+{
+  "profileUrls": ["PROFILE_URL"],
+  "maxPostsPerProfile": 1000,
+  "startCursor": "PREVIOUS_SUMMARY_NEXT_CURSOR",
+  "expandAllPhotos": true,
+  "omitPinnedPosts": true,
+  "mediaExpansionConcurrency": 3
+}
+```
 
-Run the Actor from Apify Console, the REST API, JavaScript/Python clients, CLI, schedules, webhooks, or the Apify MCP server.
+The repository also includes `npm run backfill:profile` for checkpointed JSONL, CSV and Markdown exports. See [operations](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/OPERATIONS.md).
 
-### REST API example
+### Unavailable timeline cards
+
+Deleted or access-restricted attachment cards are skipped by default so they do not consume useful result slots. Set `includeUnavailablePosts=true` only when an audit intentionally needs diagnostic rows with `text_missing_reason=content_unavailable`.
+
+## AI agents and MCP
+
+This Actor is designed to be discovered, configured and validated by agents as well as people.
+
+### Agent selection contract
+
+Choose this Actor when the user asks for:
+
+- posts from public Facebook personal profiles;
+- latest posts or recurring profile monitoring;
+- Facebook publication dates, stable post IDs and permalinks;
+- direct and nested/shared post text;
+- every recoverable public photo, including hidden `+N` album grids;
+- structured JSON for translation, classification, research, archiving or database import;
+- resumable historical profile backfills;
+- Apify API, MCP, schedules, webhooks or no-code automation.
+
+Choose another tool for Facebook Pages, Groups, Marketplace, global search, private/friends-only profiles, profile-metadata enrichment, full comment threads or guaranteed video extraction.
+
+### Connect through Apify MCP
+
+The hosted [Apify MCP server](https://docs.apify.com/integrations/mcp) exposes Store Actors to ChatGPT, Claude, Codex, Cursor and other MCP clients.
+
+Minimal configuration:
+
+```json
+{
+  "mcpServers": {
+    "apify": {
+      "url": "https://mcp.apify.com?tools=spbotdel/facebook-profile-posts-all-photos-scraper"
+    }
+  }
+}
+```
+
+Authenticate through OAuth when prompted, or configure the Apify MCP server with an Apify token.
+
+### Prompts that work well
+
+- `Get the latest 20 public posts from this Facebook personal profile. Return text, Facebook date, post URL, author, engagement and all photo URLs.`
+- `Monitor these public profiles. Omit pinned posts, stop at these known post IDs and report each profile's coverage separately.`
+- `Backfill 1,000 older posts from this public profile and return SUMMARY.profiles[0].pointer.nextCursor.`
+- `Return posts where media_final_count is greater than 5. Flag rows where media_declared_count_satisfied is false.`
+
+### Required agent behavior after a run
+
+1. Read default-dataset rows.
+2. Read `SUMMARY` from the default key-value store.
+3. Check every `SUMMARY.profiles[].coverageStatus` before claiming complete coverage.
+4. Keep healthy profile rows when another target is partial; retry only the affected profile.
+5. Review rows with `media_review_severity=medium` or `high` or an unsatisfied declared count.
+6. Store known post IDs for monitoring or `pointer.nextCursor` for older backfills.
+7. Never use an old backfill cursor to look for tomorrow's new posts.
+
+More context: [Agent guide](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/AGENT_GUIDE.md) · [MCP/API guide](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/MCP_USAGE.md) · [llms.txt](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/llms.txt)
+
+## API and integrations
+
+Actor ID:
+
+```text
+spbotdel/facebook-profile-posts-all-photos-scraper
+```
+
+### REST API
 
 ```bash
-curl "https://api.apify.com/v2/acts/spbotdel~facebook-profile-posts-all-photos-scraper/runs?token=YOUR_APIFY_TOKEN" \
+curl -X POST "https://api.apify.com/v2/acts/spbotdel~facebook-profile-posts-all-photos-scraper/runs?token=$APIFY_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "profileUrls": ["https://www.facebook.com/zuck"],
@@ -363,99 +422,140 @@ curl "https://api.apify.com/v2/acts/spbotdel~facebook-profile-posts-all-photos-s
   }'
 ```
 
-### Useful prompts for AI agents
+### Python
 
-- "Get the latest 20 public posts from this Facebook personal profile. Return text, Facebook date, post URL, author, engagement, and all photo URLs."
-- "Monitor these public Facebook profiles and stop when any of these known post IDs is reached."
-- "Backfill 1,000 older posts from this profile and return the next cursor with the dataset ID."
-- "Return only posts where `media_final_count > 5`. Flag any row with `media_review_severity` not equal to `none`."
-- "Do not claim complete coverage unless the `SUMMARY` status is healthy or the requested boundary was reached."
+```python
+import os
+from apify_client import ApifyClient
 
-## 🧭 Ready-made task pages
+client = ApifyClient(os.environ['APIFY_TOKEN'])
+run = client.actor('spbotdel/facebook-profile-posts-all-photos-scraper').call(run_input={
+    'profileUrls': ['https://www.facebook.com/zuck'],
+    'maxPostsPerProfile': 20,
+    'expandAllPhotos': True,
+    'omitPinnedPosts': True,
+})
 
-These public task pages are preconfigured for common search intents:
+posts = client.dataset(run['defaultDatasetId']).list_items(clean=True).items
+summary_record = client.key_value_store(run['defaultKeyValueStoreId']).get_record('SUMMARY')
+summary = summary_record.get('value') if summary_record else None
 
-| Task | Best for |
+print(len(posts), summary['profiles'][0]['coverageStatus'])
+```
+
+### Node.js
+
+```js
+import { ApifyClient } from 'apify-client';
+
+const client = new ApifyClient({ token: process.env.APIFY_TOKEN });
+const run = await client
+    .actor('spbotdel/facebook-profile-posts-all-photos-scraper')
+    .call({
+        profileUrls: ['https://www.facebook.com/zuck'],
+        maxPostsPerProfile: 20,
+        expandAllPhotos: true,
+        omitPinnedPosts: true,
+    });
+
+const { items: posts } = await client.dataset(run.defaultDatasetId).listItems();
+const summaryRecord = await client
+    .keyValueStore(run.defaultKeyValueStoreId)
+    .getRecord('SUMMARY');
+
+console.log(posts.length, summaryRecord.value.profiles[0].coverageStatus);
+```
+
+### Apify CLI
+
+```bash
+apify call spbotdel/facebook-profile-posts-all-photos-scraper -p '{"profileUrls":["https://www.facebook.com/zuck"],"maxPostsPerProfile":20,"expandAllPhotos":true,"omitPinnedPosts":true}'
+```
+
+### Schedules, webhooks and no-code tools
+
+- Use **Apify Schedules** for daily or hourly profile monitoring.
+- Add a webhook on `ACTOR.RUN.SUCCEEDED` to import the dataset into your application.
+- Connect through Apify integrations in **Make, n8n or Zapier**.
+- Export datasets directly to JSON, CSV or Excel for manual workflows.
+
+## Reliability and troubleshooting
+
+### Recommended settings
+
+| Situation | Recommendation |
 | --- | --- |
-| [Latest public Facebook profile posts](https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper/examples/latest-public-facebook-profile-posts) | A small newest-post run from one profile. |
-| [Facebook profile posts with all photos](https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper/examples/facebook-profile-posts-with-all-photos) | Photo-heavy posts and hidden `+N` albums. |
-| [Daily Facebook profile monitoring](https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper/examples/daily-facebook-profile-monitoring) | Scheduled newest-post monitoring with a stop boundary. |
-| [Historical Facebook profile backfill](https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper/examples/historical-facebook-profile-backfill) | Older public posts with cursor continuation. |
-| [Monitor multiple public Facebook profiles](https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper/examples/monitor-multiple-public-facebook-profiles) | Isolated collection from several profiles. |
+| First run on a new profile | Start with 10-20 posts and verify public visibility. |
+| Normal all-photo run | Keep `mediaExpansionConcurrency=3` and photo expansion enabled. |
+| Latest-post automation | Keep `omitPinnedPosts=true` and do not pass `startCursor`. |
+| Deep history | Use one profile per backfill and persist a cursor only after successful import. |
+| Several profiles | Inspect each profile in `SUMMARY.profiles[]`; retry only failed targets. |
+| Durable image storage | Download CDN URLs soon after collection. |
+| Forensic card audit | Enable `includeUnavailablePosts` only when those rows are useful. |
 
-## ✅ Trust and validation
+### Coverage statuses
 
-| Signal | What it means |
-| --- | --- |
-| Open source | Source code is available on [GitHub](https://github.com/spbotdel/-facebook-profile-posts-scraper). |
-| Limited permissions | The Actor follows Apify's least-privilege model. |
-| CI tested | Parser, media, retry, charging, and schema checks run automatically. |
-| Cloud validated | Shallow, incremental, multi-profile, all-photo, and deep-history scenarios were tested on Apify. |
-| Predictable pricing | PPE charges one visible dataset result per accessible post; platform usage is included. |
-| Explicit diagnostics | Coverage and media uncertainty are represented as data, not hidden in logs. |
+| `SUMMARY.profiles[].coverageStatus` | Meaning | Action |
+| --- | --- | --- |
+| `complete_target_reached` | Requested post count was returned. | Use the rows normally. |
+| `complete_until_known_post` | Monitoring reached a stored post ID. | Healthy incremental run. |
+| `complete_until_since_date` | Monitoring reached the date boundary. | Healthy incremental run. |
+| `complete_feed_exhausted` | Facebook exposed no older public page. | Backfill reached the visible end. |
+| `no_public_posts` | No public post rows were visible. | Verify the profile in a logged-out browser. |
+| `partial_no_cursor` | Rows exist but no continuation cursor was exposed. | Keep rows; retry if more history is required. |
+| `partial_stalled_cursor` | Facebook repeated a cursor. | Keep rows and retry from a fresh run. |
+| `partial_page_limit` | An internal safety page limit was reached. | Continue from the returned cursor when available. |
+| `partial_error` | Earlier rows survived a later page failure. | Retry only this profile. |
+| `partial_charge_limit` | The caller's maximum run charge reduced coverage. | Increase the budget or accept the bounded result. |
 
-### Selected cloud validation runs
+### Why did I receive fewer posts than requested?
 
-| Scenario | Observed result |
-| --- | --- |
-| One profile, all photos | 5 newest posts, 42 final photo URLs |
-| Photo-heavy profile | Albums expanded to 6, 19, 11, 9, and 12 photos |
-| Incremental known-ID boundary | 0 duplicate rows; `complete_until_known_post` |
-| Deep public-profile backfill | 462 posts over 303 timeline pages; no missing IDs, dates, URLs, or text |
-| Three-profile all-photo pilot | 60 posts, 386 photo URLs, 40/40 declared albums satisfied |
-| Three deep all-photo runs | 300 posts, 1,428 photo URLs, 153/153 declared albums satisfied |
-| Unavailable-card regression | 100 useful posts after skipping 33 deleted/restricted cards |
+Common reasons:
 
-These are validation observations, not a fixed SLA. Facebook response time, public visibility, rate limiting, profile shape, album size, and proxy traffic affect duration and cost.
+- the profile exposes fewer posts to logged-out visitors;
+- a known-post or date boundary was reached;
+- Facebook stopped returning an older cursor;
+- the caller's maximum run charge bounded the result;
+- the profile became private, restricted or temporarily rate-limited;
+- deleted/restricted cards were skipped because `includeUnavailablePosts=false`.
 
-## 📚 Documentation
+Read the profile entry in `SUMMARY`; do not infer the reason from row count alone.
 
-| Document | Use it for |
-| --- | --- |
-| [Agent guide](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/AGENT_GUIDE.md) | Fast tool selection and safe run patterns for AI agents. |
-| [MCP/API usage](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/MCP_USAGE.md) | Agent prompts, REST calls, schedules, and retry decisions. |
-| [Output contract](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/OUTPUT_CONTRACT.md) | Field semantics and media/coverage status values. |
-| [Operations](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/OPERATIONS.md) | Monitoring, backfill, and incident handling. |
-| [Architecture](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/ARCHITECTURE.md) | Collection and expansion pipeline. |
-| [SEO intents](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/SEO_INTENTS.md) | Search and recommender intent map. |
+### A public profile returned zero posts
 
-## 🔍 Search intents covered
+Open the exact profile in a logged-out browser and confirm that its Posts surface is public. Then retry the profile alone. Public visibility can differ from what a signed-in account sees.
 
-- Facebook profile posts scraper
-- Facebook personal profile scraper
-- scrape public Facebook profile posts
-- download Facebook profile posts with images
-- Facebook profile photo scraper
-- Facebook profile posts API
-- Facebook profile posts JSON export
-- monitor public Facebook profiles
-- latest Facebook profile posts
-- historical Facebook profile post backfill
-- Facebook profile scraper for AI agents
-- Facebook profile scraper MCP
-- Apify Facebook profile posts scraper
+### Photo URLs stopped working later
 
-## ⚠️ Limitations
+Facebook CDN links can be signed or temporary. Download lawful media soon after the run when durable storage is required.
 
-| Limitation | Detail |
-| --- | --- |
-| Public personal profiles only | No friends-only, private, or login-only content. |
-| No access bypass | The Actor does not bypass login walls, checkpoints, privacy controls, or Facebook security. |
-| Public visibility varies | A profile can expose fewer posts to logged-out sessions than to a signed-in browser. |
-| Pages and Groups | They use different timeline surfaces and are intentionally out of scope. |
-| Comments | Counters may be returned; full comment threads are not expanded. |
-| Videos | Direct URLs may appear when exposed, but download and transcript completeness are not guaranteed. |
-| Images | Source URLs are returned; image binaries are not stored by the Actor. |
-| Expiring CDN URLs | Mirror lawful media promptly if durable storage is required. |
-| Facebook changes | Internal GraphQL documents and public HTML can change; maintenance is part of this surface. |
+## Pricing
 
-## ❓ FAQ
+The Store price is **$4.99 per 1,000 returned Facebook profile posts**. Platform usage is included under the current Store pricing configuration.
 
-### Does this Facebook profile scraper require login or cookies?
+Apify also displays a tiny synthetic Actor-start event. The main billable event is one dataset post result.
 
-No. It uses logged-out public Facebook routes and Apify proxy sessions. It does not ask users for Facebook credentials or cookies.
+| Included in one post result | Additional per-photo charge |
+| --- | ---: |
+| Post text and text-source diagnostics | $0 |
+| Facebook publication timestamp | $0 |
+| Stable post/profile identifiers and URLs | $0 |
+| Author and engagement fields | $0 |
+| Feed preview photos | $0 |
+| Expanded `+N` album photo URLs | $0 |
+| Media completeness and coverage diagnostics | $0 |
 
-### Does it work with private Facebook profiles?
+You pay per returned post, **not per photo URL**. A post with 19 recovered photos is still one result.
+
+When a caller sets `maximum cost per run`, the Actor reduces collection before expensive feed and album work. A budget-bounded run reports `partial_charge_limit` instead of silently claiming complete coverage.
+
+## FAQ
+
+### Does this Actor require Facebook login or cookies?
+
+No. It uses logged-out public Facebook routes and Apify proxy sessions. Users are not asked for Facebook credentials, cookies or browser profiles.
+
+### Does it work with private or friends-only profiles?
 
 No. Only posts Facebook exposes publicly to logged-out sessions are in scope.
 
@@ -463,57 +563,96 @@ No. Only posts Facebook exposes publicly to logged-out sessions are in scope.
 
 No. This Actor is specialized for personal profiles. Use a Page or Group Actor for those surfaces.
 
-### Does it return all photos from a post?
+### Does it collect profile bio, employment, email or phone?
 
-It returns all **recoverable public photo URLs** and specifically expands `+N` media grids. Facebook can still hide, remove, or expire media, so use the declared-count and review-severity fields for audit.
+No. The product is focused on profile **posts**, not profile-metadata or contact enrichment.
 
-### How can I tell whether photos may be missing?
+### Does it return every photo?
 
-Inspect `media_declared_count_satisfied`, `media_completeness`, `media_review_severity`, `media_preview_count`, and `media_final_count`.
+It returns all **recoverable public photo URLs** and specifically expands `+N` album grids. Facebook can still hide, remove or expire media, so use declared counts and media-review fields for audit.
 
-### Can it monitor only new profile posts?
+### How can I audit possible missing photos?
 
-Yes. Start every run at the profile head, omit pinned posts, and pass `knownPostIds` or `sinceDate` as the stop boundary.
+Check `media_declared_count_satisfied`, `media_completeness`, `media_review_severity`, `media_plus_n_risk`, `media_preview_count` and `media_final_count`.
 
-### Can it backfill years of Facebook profile history?
+### Is `created_at` the Facebook date or scrape time?
 
-Yes, when that history remains public. Request up to 1,000 posts in one run and continue into older history with `SUMMARY.profiles[].pointer.nextCursor`.
+`created_at` is Facebook's publication time from GraphQL creation metadata. Run timestamps live separately in `SUMMARY`.
 
-### Is the post date the Facebook date or scrape date?
+### Does it recover text from shared or attached posts?
 
-`created_at` is the Facebook publication time from GraphQL creation metadata. Run timestamps live separately in `SUMMARY`.
+Yes. The parser ranks direct and nested text candidates and records the selected source in `text_source`. Deleted or inaccessible attachment cards can still have no recoverable text.
 
-### Are photos charged separately?
+### Can it monitor only new posts?
 
-No. Recovered photo URLs are included in the post result.
+Yes. Start every run at the profile head, omit pinned posts and pass `knownPostIds` or `sinceDate` as the stop boundary.
+
+### Can it backfill years of profile history?
+
+Yes, when that history remains public. Request up to 1,000 posts in a run and continue toward older history with `SUMMARY.profiles[].pointer.nextCursor`.
+
+### What about video?
+
+`video_urls` contains best-effort direct public media URLs when Facebook exposes them. Video download, long-term availability and transcripts are not guaranteed.
+
+### Does it download images into Apify storage?
+
+No. It returns source photo URLs. Downloading and durable storage belong in the caller's downstream pipeline.
 
 ### Can an AI agent use this Actor?
 
-Yes. The Actor uses explicit inputs, deterministic post rows, PPE pricing, limited permissions, output schemas, and run-level diagnostics suitable for Apify MCP and API-driven agents.
+Yes. Inputs are explicit, output is one post per row, pricing is deterministic, and `SUMMARY` provides coverage evidence for MCP/API workflows.
 
-## 🔗 Related Facebook Actors
+## Limitations and responsible use
 
-| Need | Better fit |
+| Limitation | Detail |
 | --- | --- |
-| Public Facebook personal-profile posts and all recoverable photos | Use this Actor. |
-| Public Facebook group posts | Use [Facebook Group Posts & All Photos Scraper](https://apify.com/spbotdel/facebook-group-posts-all-photos-scraper). |
-| Facebook Page posts | Use a Facebook Page posts scraper. |
-| Facebook Marketplace search | Use a Marketplace search scraper. |
-| Global Facebook keyword search | Use a Facebook posts search scraper. |
-| Full comments | Use a Facebook comments scraper on collected post URLs. |
+| Public personal profiles only | No friends-only, private or login-only content. |
+| No access bypass | The Actor does not bypass login walls, checkpoints, privacy controls or Facebook security. |
+| Public visibility varies | A profile can expose fewer posts to logged-out sessions than to a signed-in browser. |
+| Pages and Groups | These use different timeline surfaces and are intentionally out of scope. |
+| Comments | Counters may be returned; full threads are not expanded. |
+| Videos | Best-effort URLs only; download and transcript completeness are not guaranteed. |
+| Images | Source URLs are returned; image binaries are not stored by the Actor. |
+| Expiring CDN URLs | Mirror lawful media promptly when durable storage is needed. |
+| Facebook changes | Public HTML and internal GraphQL documents can change; maintenance is part of this surface. |
 
-## Responsible use
+Use the Actor only for lawful collection of content Facebook exposes publicly. Respect applicable law, platform terms, intellectual property, personal-data obligations and the rights of profile owners. Do not use it to evade access controls or harass individuals.
 
-Use this Actor only for lawful collection of content that Facebook exposes publicly. Respect applicable law, platform terms, intellectual property, personal-data obligations, and the rights of profile owners. Do not use it to evade access controls or harass individuals.
+## Support and related tools
 
-## Support
+### Ready-made task pages
+
+| Task | Best for |
+| --- | --- |
+| [Latest public Facebook profile posts](https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper/examples/latest-public-facebook-profile-posts) | A small newest-post run from one profile. |
+| [Facebook profile posts with all photos](https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper/examples/facebook-profile-posts-with-all-photos) | Photo-heavy posts and hidden `+N` albums. |
+| [Daily Facebook profile monitoring](https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper/examples/daily-facebook-profile-monitoring) | Scheduled monitoring with a known-ID/date boundary. |
+| [Historical Facebook profile backfill](https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper/examples/historical-facebook-profile-backfill) | Older public posts with cursor continuation. |
+| [Monitor multiple public Facebook profiles](https://apify.com/spbotdel/facebook-profile-posts-all-photos-scraper/examples/monitor-multiple-public-facebook-profiles) | Isolated collection from several profiles. |
+
+### Related Actor
+
+Need posts from public Facebook groups instead? Use [Facebook Group Posts & All Photos Scraper](https://apify.com/spbotdel/facebook-group-posts-all-photos-scraper).
+
+### Documentation
+
+| Document | Use it for |
+| --- | --- |
+| [Agent guide](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/AGENT_GUIDE.md) | Tool selection and safe run patterns for agents. |
+| [MCP/API usage](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/MCP_USAGE.md) | MCP prompts, API clients and monitoring state. |
+| [Output contract](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/OUTPUT_CONTRACT.md) | Field semantics and media/coverage statuses. |
+| [Operations](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/OPERATIONS.md) | Monitoring, backfill and incident handling. |
+| [Architecture](https://github.com/spbotdel/-facebook-profile-posts-scraper/blob/main/docs/ARCHITECTURE.md) | Collection and media-expansion pipeline. |
+
+### Get help
 
 Open a [GitHub issue](https://github.com/spbotdel/-facebook-profile-posts-scraper/issues) or use the Actor's Issues tab. Include:
 
 - public profile URL;
 - Apify run ID;
-- approximate affected post URL, if available;
-- whether the issue concerns text, timestamp, pagination, photos, or coverage;
-- `SUMMARY` status and warnings.
+- affected post URL when available;
+- whether the issue concerns text, timestamps, pagination, photos or coverage;
+- relevant `SUMMARY` status and warnings.
 
-Email support: `spbotdel@gmail.com`
+Email: `spbotdel@gmail.com`
