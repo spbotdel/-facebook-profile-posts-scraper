@@ -57,6 +57,19 @@ MCP URL: https://mcp.apify.com?tools=spbotdel/facebook-profile-posts-all-photos-
 | Several profiles | Pass multiple `profileUrls`; interpret each profile summary independently. |
 | Strict cost ceiling | Set maximum cost per run; expect `partial_charge_limit` when the budget truncates coverage. |
 
+## State routing (which field when)
+
+| Goal | Field | Rule |
+| --- | --- | --- |
+| Daily latest monitoring | `knownPostIds` (or `sinceDate` for a date cut) | Actor starts at the profile head and stops at the first known ID or older-than date. |
+| Older-post backfill | `startCursor` from `SUMMARY.pointer.nextCursor` | One profile per cursor chain. |
+
+Never pass a backfill cursor into a latest run. Never reuse one profile's cursor for another profile.
+
+## Cost rule
+
+Each post is one billable result. `maxProfilesPerRun x maxPostsPerProfile` multiplies the bill: 10 profiles x 1,000 posts is about 10,000 results.
+
 ## Interpreting results
 
 | Need | Field |
