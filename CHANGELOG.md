@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.7 - 2026-10-27
+
+- Guarded Actor status-message updates so a logging failure cannot abort otherwise valid profile collection.
+- Added an early run status message with the selected profile count.
+
 ## 1.0.1 - 2026-07-14
 
 - Rebuilt the Store README around user intent, measured validation, all-photo recovery, monitoring, historical backfills, pricing, and troubleshooting.

@@ -68,6 +68,14 @@ function errorSummary(error) {
     };
 }
 
+async function setRunStatus(message) {
+    try {
+        await Actor.setStatusMessage(message);
+    } catch (error) {
+        log.debug('Could not update Actor status message', { message: error?.message });
+    }
+}
+
 class FacebookRequestError extends Error {
     constructor(message, options = {}) {
         super(message);
@@ -511,7 +519,7 @@ async function collectProfileFeed(target, proxyConfiguration, options) {
         const boundarySplit = splitAtBoundary(page.posts, options.boundary);
         mergePosts(posts, boundarySplit.posts, seen, options.maxPostsPerProfile);
         if (pages === 1 || pages % 10 === 0) {
-            await Actor.setStatusMessage(
+            await setRunStatus(
                 `${profile.name || profile.id}: ${posts.length}/${options.maxPostsPerProfile} posts; ${pages} timeline pages`,
             );
         }
@@ -663,6 +671,7 @@ const options = {
 
 const selectedTargets = targets.slice(0, options.maxProfilesPerRun);
 const skippedTargets = targets.slice(options.maxProfilesPerRun);
+await setRunStatus(`Starting profile run: ${selectedTargets.length} profile(s)`);
 const profileSummaries = [];
 const skippedProfilesByChargeLimit = [];
 let totalRows = 0;
@@ -683,7 +692,7 @@ for (const [targetIndex, target] of selectedTargets.entries()) {
         : { ...options, maxPostsPerProfile: effectiveMaxPosts };
     if (effectiveMaxPosts < options.maxPostsPerProfile) budgetLimited = true;
 
-    await Actor.setStatusMessage(`Profile ${targetIndex + 1}/${selectedTargets.length}: ${target.input}`);
+    await setRunStatus(`Profile ${targetIndex + 1}/${selectedTargets.length}: ${target.input}`);
     const countryAttempts = [];
     const countries = proxyCountryCandidates(options.proxyCountry, options.fallbackProxyCountries);
     let completed = false;
@@ -826,5 +835,5 @@ const summary = {
 };
 
 await Actor.setValue('SUMMARY', summary);
-await Actor.setStatusMessage(`${summary.health}: ${totalRows} posts; ${summary.succeededProfiles} complete, ${summary.partialProfiles} partial, ${summary.failedProfiles} failed`);
+await setRunStatus(`${summary.health}: ${totalRows} posts; ${summary.succeededProfiles} complete, ${summary.partialProfiles} partial, ${summary.failedProfiles} failed`);
 await Actor.exit();
