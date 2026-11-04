@@ -77,3 +77,21 @@ For older posts, run one profile with up to 1,000 posts, read `SUMMARY.profiles[
 - Review unsatisfied declared photo counts and medium/high media warnings.
 - Preserve healthy profile results when another profile fails.
 - Do not invent missing Facebook fields.
+
+## MCP usage
+
+MCP endpoint: `https://mcp.apify.com?tools=spbotdel/facebook-profile-posts-all-photos-scraper`
+
+Minimal `call-actor` input:
+
+```json
+{ "profileUrls": ["https://www.facebook.com/<username>/"], "maxPostsPerProfile": 10, "expandAllPhotos": true }
+```
+
+Recommended `callOptions`:
+
+```json
+{ "memory": 1024, "timeoutSecs": 300, "maxTotalChargeUsd": 0.05 }
+```
+
+After the run, read dataset items with `get-dataset-items` and the `SUMMARY` record with `get-key-value-store-record`. Check `SUMMARY.health` and each profile's coverage status before claiming completeness.
