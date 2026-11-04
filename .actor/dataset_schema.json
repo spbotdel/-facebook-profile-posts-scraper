@@ -174,37 +174,45 @@
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "description": "Facebook identifier of the photo as a string, or null when Facebook did not expose one."
             },
             "media_type": {
-              "type": "string"
+              "type": "string",
+              "description": "Type of media item, normally photo, or null when the type was not exposed."
             },
             "source_url": {
-              "type": "string"
+              "type": "string",
+              "description": "Direct URL of the full-size public photo, or null when unavailable."
             },
             "thumbnail_url": {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "description": "URL of a smaller public thumbnail for the photo, or null when unavailable."
             },
             "width": {
               "type": [
                 "integer",
                 "null"
-              ]
+              ],
+              "description": "Original photo width in pixels, or null when Facebook did not expose it."
             },
             "height": {
               "type": [
                 "integer",
                 "null"
-              ]
+              ],
+              "description": "Original photo height in pixels, or null when Facebook did not expose it."
             },
             "source": {
-              "type": "string"
+              "type": "string",
+              "description": "Where the media URL was recovered from, such as graphql or html, or null when unknown."
             },
             "index": {
-              "type": "integer"
+              "type": "integer",
+              "description": "Zero-based position of the photo in the post's recovered media order."
             }
           }
         }
