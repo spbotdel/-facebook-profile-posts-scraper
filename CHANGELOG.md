@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.8 - 2026-11-04
+
+- Completed dataset field descriptions (45/45) for agent/MCP use; runtime code unchanged.
+- Build `1.0.8` smoke run `Uw2OdFfgAED4s89D2` succeeded with two posts.
+
 ## 1.0.7 - 2026-10-27
 
 - Guarded Actor status-message updates so a logging failure cannot abort otherwise valid profile collection.
