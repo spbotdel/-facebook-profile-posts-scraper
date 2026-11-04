@@ -4,7 +4,7 @@
   "properties": {
     "results": {
       "type": "string",
-      "title": "Profile posts",
+      "title": "Dataset items",
       "description": "URL of the default dataset with one row per collected public profile post. Open it to download JSON, CSV, or Excel.",
       "template": "{{links.apiDefaultDatasetUrl}}/items"
     },
