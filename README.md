@@ -551,57 +551,53 @@ When a caller sets `maximum cost per run`, the Actor reduces collection before e
 
 ## FAQ
 
-### Does this Actor require Facebook login or cookies?
+### Do I need a Facebook login or cookies to scrape a profile?
 
-No. It uses logged-out public Facebook routes and Apify proxy sessions. Users are not asked for Facebook credentials, cookies or browser profiles.
+No. The Actor uses logged-out public Facebook routes and Apify proxy sessions. You never provide Facebook credentials, cookies or browser profiles.
 
-### Does it work with private or friends-only profiles?
+### Can it scrape private or friends-only Facebook profiles?
 
-No. Only posts Facebook exposes publicly to logged-out sessions are in scope.
+No. It only collects posts that Facebook shows publicly to logged-out visitors. Anything restricted by privacy settings is out of scope.
 
-### Does it scrape Facebook Pages or Groups?
+### Does it work for Facebook Pages, Groups, or profile details like email and phone?
 
-No. This Actor is specialized for personal profiles. Use a Page or Group Actor for those surfaces.
+No. It is built for personal profile **posts** only. It does not collect bio, employment or contact data. For Pages or Groups, use a dedicated Page or Group Actor.
 
-### Does it collect profile bio, employment, email or phone?
+### How much does it cost to scrape Facebook profile posts?
 
-No. The product is focused on profile **posts**, not profile-metadata or contact enrichment.
+FREE and BRONZE cost 4.99 USD per 1,000 posts, Silver 4.74 and Gold or higher 4.49. A run also has a 0.00005 USD start event and a 0.02 USD minimum charge cap. You are billed per post returned, not per profile; 10,000 posts cost about 49.90 USD at the FREE/BRONZE rate plus the start event.
 
-### Does it return every photo?
+### How many posts can I get in one run?
 
-It returns all **recoverable public photo URLs** and specifically expands `+N` album grids. Facebook can still hide, remove or expire media, so use declared counts and media-review fields for audit.
+You can request up to 1,000 posts per profile and up to 20 profiles per run (`maxProfilesPerRun`), so one run can return up to roughly 20,000 posts. Charge limits can stop a run earlier and are reported in `SUMMARY`.
 
-### How can I audit possible missing photos?
+### How do I backfill years of a profile's history?
 
-Check `media_declared_count_satisfied`, `media_completeness`, `media_review_severity`, `media_plus_n_risk`, `media_preview_count` and `media_final_count`.
+Request up to 1,000 posts per profile, then save each profile's `SUMMARY.profiles[].pointer.nextCursor` and pass it back as that profile's `startCursor`. This works only while that history is still public.
 
-### Is `created_at` the Facebook date or scrape time?
+### How do I monitor a profile for only new posts?
 
-`created_at` is Facebook's publication time from GraphQL creation metadata. Run timestamps live separately in `SUMMARY`.
+Start each run at the profile head, omit pinned posts and pass `knownPostIds` or `sinceDate` as the stop boundary. Don't reuse a backfill cursor to look for new posts.
 
-### Does it recover text from shared or attached posts?
+### How do I know whether a run collected everything?
 
-Yes. The parser ranks direct and nested text candidates and records the selected source in `text_source`. Deleted or inaccessible attachment cards can still have no recoverable text.
+Check `SUMMARY`. `SUMMARY.health` reports the overall state, and `SUMMARY.profiles[]` shows coverage for each profile. Look for `partial_charge_limit` and `skippedProfilesByChargeLimit`; with `includeUnavailablePosts` off, deleted or restricted cards are skipped and do not consume result slots.
 
-### Can it monitor only new posts?
+### Does it return every photo in a post?
 
-Yes. Start every run at the profile head, omit pinned posts and pass `knownPostIds` or `sinceDate` as the stop boundary.
+It returns all recoverable public photo URLs and expands `+N` album grids. Facebook can still hide, remove or expire media. To audit gaps, check `media_completeness`, `media_declared_count_satisfied`, `media_review_severity`, `media_plus_n_risk`, `media_preview_count` and `media_final_count`.
 
-### Can it backfill years of profile history?
+### Is `created_at` the post date or the scrape time?
 
-Yes, when that history remains public. Request up to 1,000 posts in a run and continue toward older history with `SUMMARY.profiles[].pointer.nextCursor`.
+`created_at` is Facebook's publication time from creation metadata. Run timestamps are kept separately in `SUMMARY`.
 
-### What about video?
+### Does it download images or videos into Apify storage?
 
-`video_urls` contains best-effort direct public media URLs when Facebook exposes them. Video download, long-term availability and transcripts are not guaranteed.
+No. It returns source photo URLs. `video_urls` holds best-effort direct public links when Facebook exposes them. Downloads, long-term availability and transcripts are not guaranteed.
 
-### Does it download images into Apify storage?
+### Can an AI agent run this Actor through MCP?
 
-No. It returns source photo URLs. Downloading and durable storage belong in the caller's downstream pipeline.
-
-### Can an AI agent use this Actor?
-
-Yes. Inputs are explicit, output is one post per row, pricing is deterministic, and `SUMMARY` provides coverage evidence for MCP/API workflows.
+Yes. The agent starts a run with `call-actor`, passes Actor input normally and sets memory, timeout and `maxTotalChargeUsd` in `callOptions` — these are MCP run options, not input fields. It reads results with `get-dataset-items`, then checks `SUMMARY` for health and per-profile coverage before using the data. Per-post pricing has tier discounts (see the pricing question).
 
 ## Limitations and responsible use
 
