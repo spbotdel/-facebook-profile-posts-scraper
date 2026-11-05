@@ -9,6 +9,8 @@ Scrape **latest or historical posts from public Facebook personal profiles** int
 
 > **One paid result = one public Facebook profile post.** Expanded photo URLs are included in the same dataset row and the same per-post price. No Facebook account, cookies, credentials, or browser session are required from the user.
 
+**Agent Skill:** use the [facebook-intelligence skill](https://github.com/spbotdel/facebook-intelligence-skill) to route requests across all four spbotdel Facebook Actors through Apify MCP.
+
 | Best for | Not designed for |
 | --- | --- |
 | Public personal profiles, newest-post monitoring, historical backfills, photo-heavy posts, creator/public-figure research, AI agents, MCP, API and scheduled pipelines | Private or friends-only profiles, Facebook Pages or Groups, Marketplace, global keyword search, expanded comments, guaranteed video downloads or transcripts |
